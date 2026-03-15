@@ -1,0 +1,220 @@
+// 通用
+"save" = "保存";
+"cancel" = "取消";
+"back" = "返回";
+"noData" = "暂无数据";
+
+// 导航标题
+"nav_title_record" = "记一组";
+"nav_title_group_record" = "记一场";
+"nav_title_analysis" = "成绩分析";
+
+// 分析类型
+"analysis_trend" = "成绩趋势";
+"analysis_stability" = "稳定性";
+"analysis_accuracy" = "命中率";
+
+// 时间范围
+"time_today" = "今日";
+"time_week" = "周";
+"time_month" = "月";
+"time_year" = "年";
+
+// 基本选项
+"basic_options" = "基本选项";
+"bow_type" = "弓种";
+"distance" = "距离";
+"target_type" = "靶型";
+
+// 成绩录入
+"score_input" = "成绩录入";
+"group_score_input" = "第%d组成绩录入";
+"group_score_total" = "得分：%d";
+
+// 统计信息
+"stats_trend" = "趋势分析";
+"stats_info" = "统计信息";
+"stats_hit" = "命中统计";
+"stats_avg" = "平均分";
+"stats_max" = "最高分";
+"stats_min" = "最低分";
+"stats_10_rate" = "10环率";
+"stats_9_rate" = "9环率";
+"stats_8_rate" = "8环率";
+
+// 比赛类型
+"match_type" = "%d组/每组%d支箭/共%d支箭";
+
+// Tab
+"tab_record" = "记录";
+"tab_analysis" = "分析";
+
+// Content
+"content_training_record" = "训练记录";
+"content_empty_state_prompt" = "准备好了吗？骚年，来记录第一箭吧！";
+"content_app_title" = "小黄鱼记录本";
+"content_view_detail" = "查看详情";
+"content_hide_detail" = "收起详情";
+"content_delete" = "删除";
+"content_score" = "得分";
+"content_total_score" = "总分";
+"format_date_time" = "yyyy年MM月dd日 HH:mm";
+
+"analysis_title" = "成绩分析";
+"analysis_type" = "分析类型";
+"analysis_time_range" = "时间范围";
+"analysis_trend" = "成绩趋势";
+"analysis_comprehensive"="综合分析";
+"analysis_stability" = "稳定性";
+"analysis_accuracy" = "命中率";
+"analysis_no_data" = "暂无数据";
+"analysis_date" = "日期";
+"analysis_score" = "得分";
+"analysis_standard_deviation" = "标准差";
+"analysis_trend_analysis" = "趋势分析";
+"analysis_stats_info" = "统计信息";
+"analysis_hit_stats" = "命中统计";
+"analysis_avg_score" = "平均分";
+"analysis_max_score" = "最高分";
+"analysis_min_score" = "最低分";
+"analysis_ten_rate" = "10环率";
+"analysis_nine_rate" = "9环率";
+"analysis_eight_rate" = "8环率";
+"analysis_ring_rate" = "%d环: %.1f%%";
+
+// 综合分析
+"analysis_overall_score" = "总体评分";
+"analysis_average_per_arrow" = "平均每箭";
+"analysis_total_arrows" = "总箭数";
+"analysis_ability_analysis" = "能力分析";
+"analysis_detailed_data" = "详细数据";
+"analysis_stability_level" = "稳定性水平";
+"analysis_hit_rate" = "命中率";
+"analysis_consistency" = "一致性";
+"analysis_recent_trend" = "近期趋势";
+
+// 成绩详情
+"detail_title" = "射箭成绩详细";
+"detail_total_score" = "总分";
+"detail_like_count" = "赞(%d)";
+"detail_ring_distribution" = "环值分布";
+"detail_average_score" = "每箭平均%.2f环";
+"detail_arrow_scores" = "每箭成绩";
+"detail_delete_record" = "删除记录";
+"detail_record_again" = "再记一组";
+"detail_delete_confirm_title" = "确认删除";
+"detail_delete_confirm_message" = "删除后无法恢复，确认要删除这条记录吗？";
+"detail_delete_cancel" = "取消";
+"detail_delete_confirm" = "删除";
+
+
+"detail_basic_info" = "成绩类型";
+"detail_score" = "总分";
+"detail_score_distribution" = "环值分布";
+
+// 组别成绩详情
+"group_detail_title" = "比赛成绩详情";
+"group_detail_basic_info" = "基本信息";
+"group_detail_match_info" = "比赛信息";
+"group_detail_total_score" = "总分";
+"group_detail_like_count" = "赞(%d)";
+"group_detail_group_scores" = "各组成绩";
+"group_detail_group_number" = "第%d组";
+"group_detail_group_score" = "得分：%d";
+"group_detail_average_per_arrow" = "每箭平均%.2f环";
+"group_detail_ring_distribution" = "环值分布";
+"group_detail_delete_record" = "删除记录";
+"group_detail_record_again" = "再记一场";
+"group_detail_delete_confirm" = "确认删除";
+"group_detail_delete_message" = "删除后无法恢复，确认要删除这条记录吗？";
+
+// 组别成绩输入
+"group_input_title" = "比赛成绩录入";
+"group_input_basic_options" = "基本选项";
+"group_input_bow_type" = "弓种";
+"group_input_distance" = "距离";
+"group_input_target_type" = "靶型";
+"group_input_match_type" = "比赛类型";
+"group_input_score" = "第%d组成绩录入(得分：%d)";
+"group_input_save" = "保存成绩";
+"group_input_select_bow_type" = "选择弓种";
+"group_input_select_distance" = "选择距离";
+"group_input_select_target_type" = "选择靶型";
+"group_input_select_match_type" = "选择比赛类型";
+
+// 弓种选项
+"bow_type_compound" = "复合弓";
+"bow_type_recurve" = "反曲弓";
+"bow_type_traditional" = "传统弓";
+"bow_type_meilie" = "美猎弓";
+"bow_type_guanggong" = "光弓";
+"bow_type_meilie" = "美猎";
+
+// 距离选项
+"distance_10m" = "10m";
+"distance_18m" = "18m";
+"distance_30m" = "30m";
+"distance_50m" = "50m";
+"distance_70m" = "70m";
+
+// 靶型选项
+"target_type_122cm_standard" = "122cm靶面（标准室外）";
+"target_type_80cm_full" = "80cm靶面";
+"target_type_40cm_full" = "40cm标准靶（完整版）";
+"target_type_40cm_triple_vertical" = "40cm三联靶（竖排）";
+"target_type_40cm_triple_triangle" = "40cm三联靶（三角形）";
+"target_type_60cm_indoor" = "60cm室内靶";
+"target_type_compound_inner10" = "复合弓专用靶（内10环）";
+
+// 单组成绩输入
+"single_input_title" = "单组成绩录入";
+"single_input_basic_options" = "基本选项";
+"single_input_score_input" = "成绩录入";
+"single_input_total_score" = "总分：%d";
+"single_input_save" = "保存成绩";
+"single_input_select_bow_type" = "选择弓种";
+"single_input_select_distance" = "选择距离";
+"single_input_select_target_type" = "选择靶型";
+"single_input_arrow_number" = "第%d箭";
+
+"group_input_number_of_groups" = "组数";
+"group_input_arrows_per_group" = "每组箭数";
+"common_done" = "完成";
+
+"score_input_title" = "分数输入";
+"score_input_select" = "选择分数";
+"score_input_current" = "当前分数：%@";
+"score_input_cancel" = "取消";
+
+"format_short_date" = "MM-dd";
+"analysis_count" = "次数";
+
+// 稳定性分析
+"analysis_stability_level_high" = "非常稳定";
+"analysis_stability_level_medium" = "较为稳定";
+"analysis_stability_level_low" = "不够稳定";
+"analysis_stability_description" = "数值越低表示越稳定";
+"analysis_avg_deviation" = "平均波动";
+"analysis_max_deviation" = "最大波动";
+"analysis_min_deviation" = "最小波动";
+
+// 命中率分析
+"analysis_total_hit_rate" = "总命中率";
+"analysis_gold_rate" = "金环率";
+"analysis_average_deviation" = "平均波动";
+
+"common_back" = "返回";
+"common_save" = "保存";
+"common_cancel" = "取消";
+"common_delete" = "删除";
+"common_done" = "完成";
+"common_addmore" = "再来一组";
+
+// 英文版本
+"content.appTitle" = "小黄鱼记录本";
+"settings_title"="设置";
+"settings_language" = "语言";
+"settings_language_selection"  = "语言选择";
+"settings_about" = "关于";
+"settings_feedback" = "反馈";
+"settings_version" = "版本";

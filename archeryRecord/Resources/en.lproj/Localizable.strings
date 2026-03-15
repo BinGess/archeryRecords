@@ -1,0 +1,219 @@
+// Common
+"save" = "Save";
+"cancel" = "Cancel";
+"back" = "Back";
+"noData" = "No Data";
+
+// Navigation Titles
+"nav_title_record" = "Single Round";
+"nav_title_group_record" = "Match Record";
+"nav_title_analysis" = "Score Analysis";
+
+// Analysis Types
+"analysis_trend" = "Score Trend";
+"analysis_stability" = "Stability";
+"analysis_accuracy" = "Accuracy";
+
+// Time Range
+"time_today" = "Today";
+"time_week" = "Week";
+"time_month" = "Month";
+"time_year" = "Year";
+
+// Basic Options
+"basic_options" = "Basic Options";
+"bow_type" = "Bow Type";
+"distance" = "Distance";
+"target_type" = "Target Face";
+
+// Score Input
+"score_input" = "Score Input";
+"group_score_input" = "End %d Score Input";
+"group_score_total" = "Score: %d";
+
+// Statistics
+"stats_trend" = "Trend Analysis";
+"stats_info" = "Statistics";
+"stats_hit" = "Hit Statistics";
+"stats_avg" = "Average";
+"stats_max" = "Highest";
+"stats_min" = "Lowest";
+"stats_10_rate" = "10s Rate";
+"stats_9_rate" = "9s Rate";
+"stats_8_rate" = "8s Rate";
+
+// Match Type
+"match_type" = "%d ends/%d arrows per end/total %d arrows";
+
+// Tab
+"tab_record" = "Record";
+"tab_analysis" = "Analysis";
+
+// Content
+"content_training_record" = "Training Record";
+"content_empty_state_prompt" = "Ready? Let's record your first arrow!";
+"content_app_title" = "Yellow Fish Archery";
+"content_view_detail" = "View Details";
+"content_hide_detail" = "Hide Details";
+"content_delete" = "Delete";
+"content_score" = "Score";
+"content_total_score" = "Total Score";
+"format_date_time" = "MM/dd/yyyy HH:mm";
+
+"analysis_title" = "Score Analysis";
+"analysis_type" = "Analysis Type";
+"analysis_time_range" = "Time Range";
+"analysis_trend" = "Score Trend";
+"analysis_comprehensive" = "Comprehensive Analysis";
+"analysis_stability" = "Stability";
+"analysis_accuracy" = "Accuracy";
+"analysis_no_data" = "No Data Available";
+"analysis_date" = "Date";
+"analysis_score" = "Score";
+"analysis_standard_deviation" = "Standard Deviation";
+"analysis_trend_analysis" = "Trend Analysis";
+"analysis_stats_info" = "Statistics";
+"analysis_hit_stats" = "Hit Statistics";
+"analysis_avg_score" = "Average Score";
+"analysis_max_score" = "Highest Score";
+"analysis_min_score" = "Lowest Score";
+"analysis_ten_rate" = "10s Rate";
+"analysis_nine_rate" = "9s Rate";
+"analysis_eight_rate" = "8s Rate";
+"analysis_ring_rate" = "%d Ring: %.1f%%";
+
+// Comprehensive Analysis
+"analysis_overall_score" = "Overall Score";
+"analysis_average_per_arrow" = "Per Arrow Average";
+"analysis_total_arrows" = "Total Arrows";
+"analysis_ability_analysis" = "Ability Analysis";
+"analysis_detailed_data" = "Detailed Data";
+"analysis_stability_level" = "Stability Level";
+"analysis_hit_rate" = "Hit Rate";
+"analysis_consistency" = "Consistency";
+"analysis_recent_trend" = "Recent Trend";
+
+// Score Details
+"detail_title" = "Archery Score Details";
+"detail_total_score" = "Total Score";
+"detail_like_count" = "Likes(%d)";
+"detail_ring_distribution" = "Ring Distribution";
+"detail_average_score" = "%.2f Average Per Arrow";
+"detail_arrow_scores" = "Arrow Scores";
+"detail_delete_record" = "Delete Record";
+"detail_record_again" = "Record Another";
+"detail_delete_confirm_title" = "Confirm Delete";
+"detail_delete_confirm_message" = "This action cannot be undone. Are you sure?";
+"detail_delete_cancel" = "Cancel";
+"detail_delete_confirm" = "Delete";
+
+"detail_basic_info" = "Score Type";
+"detail_score" = "Total Score";
+"detail_score_distribution" = "Ring Distribution";
+
+// Group Score Details
+"group_detail_title" = "Match Score Details";
+"group_detail_basic_info" = "Basic Info";
+"group_detail_match_info" = "Match Info";
+"group_detail_total_score" = "Total Score";
+"group_detail_like_count" = "Likes(%d)";
+"group_detail_group_scores" = "End Scores";
+"group_detail_group_number" = "End %d";
+"group_detail_group_score" = "Score: %d";
+"group_detail_average_per_arrow" = "%.2f Average Per Arrow";
+"group_detail_ring_distribution" = "Ring Distribution";
+"group_detail_delete_record" = "Delete Record";
+"group_detail_record_again" = "Record Another Match";
+"group_detail_delete_confirm" = "Confirm Delete";
+"group_detail_delete_message" = "This action cannot be undone. Are you sure?";
+
+// Group Score Input
+"group_input_title" = "Match Score Input";
+"group_input_basic_options" = "Basic Options";
+"group_input_bow_type" = "Bow Type";
+"group_input_distance" = "Distance";
+"group_input_target_type" = "Target Face";
+"group_input_match_type" = "Match Type";
+"group_input_score" = "End %d Score Input (Score: %d)";
+"group_input_save" = "Save Score";
+"group_input_select_bow_type" = "Select Bow Type";
+"group_input_select_distance" = "Select Distance";
+"group_input_select_target_type" = "Select Target Face";
+"group_input_select_match_type" = "Select Match Type";
+
+// Bow Types
+"bow_type_compound" = "Compound";
+"bow_type_recurve" = "Recurve";
+"bow_type_traditional" = "Traditional";
+"bow_type_guanggong" = "光弓";
+"bow_type_meilie" = "美猎";
+
+// Distance Options
+"distance_10m" = "10m";
+"distance_18m" = "18m";
+"distance_30m" = "30m";
+"distance_50m" = "50m";
+"distance_70m" = "70m";
+
+// Target Face Options
+"target_type_122cm_standard" = "122cm Standard Outdoor";
+"target_type_80cm_full" = "80cm Full Face";
+"target_type_40cm_full" = "40cm Standard Full";
+"target_type_40cm_triple_vertical" = "40cm Triple Vertical";
+"target_type_40cm_triple_triangle" = "40cm Triple Triangle";
+"target_type_60cm_indoor" = "60cm Indoor";
+"target_type_compound_inner10" = "Compound Inner 10-Ring";
+
+// Single Round Input
+"single_input_title" = "Single Round Input";
+"single_input_basic_options" = "Basic Options";
+"single_input_score_input" = "Score Input";
+"single_input_total_score" = "Total: %d";
+"single_input_save" = "Save Score";
+"single_input_select_bow_type" = "Select Bow Type";
+"single_input_select_distance" = "Select Distance";
+"single_input_select_target_type" = "Select Target Face";
+"single_input_arrow_number" = "Arrow %d";
+
+"group_input_number_of_groups" = "Number of Ends";
+"group_input_arrows_per_group" = "Arrows per End";
+"common_done" = "Done";
+
+"score_input_title" = "Score Input";
+"score_input_select" = "Select Score";
+"score_input_current" = "Current Score: %@";
+"score_input_cancel" = "Cancel";
+
+"format_short_date" = "MM-dd";
+"analysis_count" = "Count";
+
+// Stability Analysis
+"analysis_stability_level_high" = "Very Stable";
+"analysis_stability_level_medium" = "Moderately Stable";
+"analysis_stability_level_low" = "Less Stable";
+"analysis_stability_description" = "Lower value indicates better stability";
+"analysis_avg_deviation" = "Average Deviation";
+"analysis_max_deviation" = "Maximum Deviation";
+"analysis_min_deviation" = "Minimum Deviation";
+
+// Accuracy Analysis
+"analysis_total_hit_rate" = "Total Hit Rate";
+"analysis_gold_rate" = "Gold Rate";
+"analysis_average_deviation" = "Average Deviation";
+
+"common_back" = "Back";
+"common_save" = "Save";
+"common_cancel" = "Cancel";
+"common_delete" = "Delete";
+"common_done" = "Done";
+"common_addmore" = "Add";
+
+// App Title
+"content.appTitle" = "Yellow Fish Archery";
+
+"settings_title"="Setting";
+"settings_language" = "language";
+"settings_language_selection"  = "Language select";
+"settings_about" = "About";
+"settings_feedback" = "Feedback";
+"settings_version" = "Version";
