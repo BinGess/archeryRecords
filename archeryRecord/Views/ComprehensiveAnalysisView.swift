@@ -1,44 +1,25 @@
 import SwiftUI
+import Charts
 
 struct ComprehensiveAnalysisView: View {
     let records: [ArcheryRecord]
     let groupRecords: [ArcheryGroupRecord]
-    @State private var timeRange = 0
+    let timeRange: Int
     
     var body: some View {
-        VStack {
-            // 时间范围选择器
-            Picker("时间范围", selection: $timeRange) {
-                Text("今天").tag(0)
-                Text("本周").tag(1)
-                Text("本月").tag(2)
-                Text("本年").tag(3)
-            }
-            .pickerStyle(SegmentedPickerStyle())
-            .padding()
-            
-            let filteredRecords = filterRecords(records, by: timeRange)
-            let filteredGroupRecords = filterGroupRecords(groupRecords, by: timeRange)
-            
+        let filteredData = ScoreAnalytics.filterRecords(records: records, groupRecords: groupRecords, timeRange: timeRange)
+        let filteredRecords = filteredData.records
+        let filteredGroupRecords = filteredData.groupRecords
+
+        return Group {
             if filteredRecords.isEmpty && filteredGroupRecords.isEmpty {
-                EmptyAnalysisView()
+                EmptyView()
             } else {
-                ScrollView {
-                    VStack(spacing: 20) {
-                        // 总成绩卡片
-                        totalScoreCard(filteredRecords, filteredGroupRecords)
-                        
-                        // 核心指标区域
-                        coreMetricsSection(filteredRecords, filteredGroupRecords)
-                        
-                        // 环数分析卡片
-                        ringAnalysisSection(filteredRecords, filteredGroupRecords)
-                        
-                        // 综合评估卡片
-                        comprehensiveEvaluationSection(filteredRecords, filteredGroupRecords)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+                VStack(spacing: 20) {
+                    totalScoreCard(filteredRecords, filteredGroupRecords)
+                    coreMetricsSection(filteredRecords, filteredGroupRecords)
+                    ringAnalysisSection(filteredRecords, filteredGroupRecords)
+                    comprehensiveEvaluationSection(filteredRecords, filteredGroupRecords)
                 }
             }
         }
@@ -46,60 +27,19 @@ struct ComprehensiveAnalysisView: View {
 
     // MARK: - 辅助方法
     
-    /// 过滤记录
-    private func filterRecords(_ records: [ArcheryRecord], by timeRange: Int) -> [ArcheryRecord] {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        return records.filter { record in
-            switch timeRange {
-            case 0: // 今天
-                return calendar.isDate(record.date, inSameDayAs: now)
-            case 1: // 本周
-                return calendar.isDate(record.date, equalTo: now, toGranularity: .weekOfYear)
-            case 2: // 本月
-                return calendar.isDate(record.date, equalTo: now, toGranularity: .month)
-            case 3: // 本年
-                return calendar.isDate(record.date, equalTo: now, toGranularity: .year)
-            default:
-                return true
-            }
-        }
-    }
-    
-    private func filterGroupRecords(_ groupRecords: [ArcheryGroupRecord], by timeRange: Int) -> [ArcheryGroupRecord] {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        return groupRecords.filter { record in
-            switch timeRange {
-            case 0: // 今天
-                return calendar.isDate(record.date, inSameDayAs: now)
-            case 1: // 本周
-                return calendar.isDate(record.date, equalTo: now, toGranularity: .weekOfYear)
-            case 2: // 本月
-                return calendar.isDate(record.date, equalTo: now, toGranularity: .month)
-            case 3: // 本年
-                return calendar.isDate(record.date, equalTo: now, toGranularity: .year)
-            default:
-                return true
-            }
-        }
-    }
-    
     /// 总成绩卡片
     private func totalScoreCard(_ records: [ArcheryRecord], _ groupRecords: [ArcheryGroupRecord]) -> some View {
         let totalScore = calculateTotalScore(records, groupRecords)
         let totalShots = calculateTotalShots(records, groupRecords)
-        let averageScore = totalShots > 0 ? Double(totalScore) / Double(totalShots) : 0.0
-        let completionRate = averageScore * 10 // 转换为百分比
+        let trendSummary = ScoreAnalytics.calculateTrendSummary(records: records, groupRecords: groupRecords, timeRange: 4)
         
         return VStack(spacing: 0) {
             ZStack {
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        Color(red: 0.4, green: 0.3, blue: 0.8),
-                        Color(red: 0.6, green: 0.4, blue: 0.9)
+                        Color(red: 0.12, green: 0.18, blue: 0.30),
+                        Color(red: 0.55, green: 0.20, blue: 0.18),
+                        Color(red: 0.91, green: 0.54, blue: 0.17)
                     ]),
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -108,37 +48,142 @@ struct ComprehensiveAnalysisView: View {
                 
                 VStack(spacing: 16) {
                     HStack {
-                        Text("综合成绩")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white.opacity(0.9))
+                        AnalysisCardHeading(
+                            phase: L10n.AnalysisCardCopy.phaseConclusion,
+                            title: L10n.AnalysisCardCopy.comprehensiveConclusionTitle,
+                            detail: L10n.tr("analysis_sessions_with_value", trendSummary.sessionCount),
+                            accent: .white,
+                            isDarkBackground: true
+                        )
                         
                         Spacer()
                         
-                        Text("平均环数")
-                            .font(.system(size: 12))
-                            .foregroundColor(.white.opacity(0.6))
+                        Label(trendSummary.momentum.localizedLabel, systemImage: trendSummary.momentum.symbolName)
+                            .font(.system(size: 12, weight: .semibold))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color.white.opacity(0.16))
+                            .foregroundColor(.white)
+                            .clipShape(Capsule())
                     }
                     
-                    VStack(spacing: 8) {
-                        Text(String(format: "%.1f", averageScore))
-                            .font(.system(size: 48, weight: .bold))
-                            .foregroundColor(.white)
-                        
-                        Text(String(format: "%.1f%%", completionRate))
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white.opacity(0.9))
+                    HStack(alignment: .bottom) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(String(format: "%.1f", trendSummary.overallAverage))
+                                .sharedTextStyle(SharedStyles.Text.metricValue, color: .white)
+
+                            Text(L10n.tr("analysis_average_ring"))
+                                .sharedTextStyle(SharedStyles.Text.caption, color: .white.opacity(0.85))
+                        }
+
+                        Spacer()
+
+                        VStack(alignment: .trailing, spacing: 8) {
+                            Text(formatTrend(trendSummary.recentChangePercent))
+                                .font(SharedStyles.Text.compactValue)
+                                .foregroundColor(trendSummary.momentum == .falling ? Color(red: 1.0, green: 0.86, blue: 0.86) : Color.white)
+
+                            Text(L10n.Analysis.recentTrend)
+                                .sharedTextStyle(SharedStyles.Text.footnote, color: .white.opacity(0.75))
+                        }
                     }
+
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 2), spacing: 10) {
+                        trendMetricChip(
+                            title: L10n.tr("analysis_latest_session_avg"),
+                            value: String(format: "%.1f", trendSummary.latestAverage)
+                        )
+                        trendMetricChip(
+                            title: L10n.tr("analysis_recent_sessions_avg"),
+                            value: String(format: "%.1f", trendSummary.recentAverage)
+                        )
+                        trendMetricChip(
+                            title: L10n.tr("analysis_trend_baseline_avg"),
+                            value: String(format: "%.1f", trendSummary.baselineAverage)
+                        )
+                        trendMetricChip(
+                            title: L10n.tr("analysis_best_session_avg"),
+                            value: String(format: "%.1f", trendSummary.bestAverage)
+                        )
+                    }
+
+                    if !trendSummary.points.isEmpty {
+                        Chart {
+                            ForEach(trendSummary.points, id: \.date) { point in
+                                PointMark(
+                                    x: .value(L10n.Analysis.date, point.date),
+                                    y: .value(L10n.Analysis.score, point.score)
+                                )
+                                .foregroundStyle(Color.white.opacity(0.75))
+                                .symbolSize(28)
+                            }
+
+                            ForEach(trendSummary.rollingAveragePoints, id: \.date) { point in
+                                LineMark(
+                                    x: .value(L10n.Analysis.date, point.date),
+                                    y: .value(L10n.tr("analysis_rolling_average"), point.score)
+                                )
+                                .foregroundStyle(Color.white)
+                                .lineStyle(StrokeStyle(lineWidth: 3))
+                                .interpolationMethod(.monotone)
+                            }
+                        }
+                        .frame(height: 120)
+                        .chartLegend(.hidden)
+                        .chartYAxis(.hidden)
+                        .chartXAxis {
+                            AxisMarks(values: .automatic(desiredCount: 3)) { value in
+                                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [3, 3]))
+                                    .foregroundStyle(Color.white.opacity(0.16))
+                                AxisValueLabel(format: .dateTime.month(.abbreviated).day(), centered: true)
+                                    .foregroundStyle(Color.white.opacity(0.75))
+                            }
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text(trendSummary.insight.title)
+                                .sharedTextStyle(SharedStyles.Text.bodyEmphasis, color: .white)
+
+                            Spacer()
+
+                            if trendSummary.hasEnoughHistory {
+                                Text(formatTrend(trendSummary.recentChangePercent))
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.white.opacity(0.92))
+                            }
+                        }
+
+                        Text(trendSummary.insight.message)
+                            .sharedTextStyle(
+                                SharedStyles.Text.footnote,
+                                color: .white.opacity(0.82),
+                                lineSpacing: SharedStyles.captionLineSpacing
+                            )
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(Color.black.opacity(0.14))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                    )
+                    .cornerRadius(14)
                     
                     HStack {
-                        Text("总箭数: \(totalShots)")
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.8))
+                        Text(L10n.tr("analysis_total_arrows_with_value", totalShots))
+                            .sharedTextStyle(SharedStyles.Text.caption, color: .white.opacity(0.8))
                         
                         Spacer()
                         
-                        Text("总分: \(totalScore)")
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.8))
+                        Text(L10n.tr("analysis_total_score_with_value", totalScore))
+                            .sharedTextStyle(SharedStyles.Text.caption, color: .white.opacity(0.8))
+
+                        Spacer()
+
+                        Text(L10n.tr("analysis_sessions_with_value", trendSummary.sessionCount))
+                            .sharedTextStyle(SharedStyles.Text.caption, color: .white.opacity(0.8))
                     }
                 }
                 .padding(20)
@@ -150,30 +195,31 @@ struct ComprehensiveAnalysisView: View {
     private func coreMetricsSection(_ records: [ArcheryRecord], _ groupRecords: [ArcheryGroupRecord]) -> some View {
         let analytics = calculateAnalytics(records, groupRecords)
         
-        return VStack(spacing: 16) {
-            HStack {
-                Text("核心指标")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.black)
-                Spacer()
-            }
+        return VStack(alignment: .leading, spacing: 16) {
+            AnalysisCardHeading(
+                phase: L10n.AnalysisCardCopy.phaseChart,
+                title: L10n.AnalysisCardCopy.coreMetricsTitle,
+                detail: L10n.AnalysisCardCopy.coreMetricsDetail,
+                accent: SharedStyles.Accent.sky
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
             
             HStack(spacing: 12) {
                 // 平均环数
                 MetricCard(
                     icon: "target",
-                    title: "平均环数",
+                    title: L10n.tr("analysis_average_ring"),
                     value: String(format: "%.1f", analytics.averageRing),
-                    subtitle: "环",
+                    subtitle: L10n.tr("analysis_ring_unit"),
                     color: .blue
                 )
                 
                 // 稳定性评分
                 MetricCard(
                     icon: "chart.line.uptrend.xyaxis",
-                    title: "稳定性",
+                    title: L10n.Analysis.stability,
                     value: String(format: "%.0f", analytics.stabilityScore),
-                    subtitle: "分",
+                    subtitle: L10n.tr("content_points_unit"),
                     color: .green
                 )
             }
@@ -182,7 +228,7 @@ struct ComprehensiveAnalysisView: View {
                 // 疲劳指数
                 MetricCard(
                     icon: "bolt.fill",
-                    title: "疲劳指数",
+                    title: L10n.tr("analysis_fatigue_index"),
                     value: String(format: "%.0f%%", analytics.fatigueIndex),
                     subtitle: "",
                     color: .orange
@@ -191,12 +237,13 @@ struct ComprehensiveAnalysisView: View {
                 // 10环率
                 MetricCard(
                     icon: "scope",
-                    title: "10环率",
+                    title: L10n.tr("analysis_ten_ring_rate"),
                     value: String(format: "%.0f%%", analytics.tenRingRate),
                     subtitle: "",
                     color: .purple
                 )
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 16)
@@ -209,27 +256,27 @@ struct ComprehensiveAnalysisView: View {
     private func ringAnalysisSection(_ records: [ArcheryRecord], _ groupRecords: [ArcheryGroupRecord]) -> some View {
         let ringStats = calculateRingDistribution(records, groupRecords)
         
-        return VStack(spacing: 16) {
-            HStack {
-                Text("环数分析")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.black)
-                Spacer()
-            }
+        return VStack(alignment: .leading, spacing: 16) {
+            AnalysisCardHeading(
+                phase: L10n.AnalysisCardCopy.phaseChart,
+                title: L10n.AnalysisCardCopy.ringStructureTitle,
+                detail: L10n.AnalysisCardCopy.ringStructureDetail,
+                accent: .orange
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
             
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 12) {
                 ForEach(Array(ringStats.sorted(by: { $0.key > $1.key })), id: \.key) { ring, count in
                     let totalShots = calculateTotalShots(records, groupRecords)
-                    let percentage = totalShots > 0 ? Double(count) / Double(totalShots) * 100 : 0.0
-                    
                     RingStatCard(
-                        ring: "\(ring)环",
+                        ring: L10n.tr("analysis_ring_label", ring),
                         count: count,
                         total: totalShots,
                         color: ringColor(for: ring)
                     )
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 16)
@@ -243,21 +290,26 @@ struct ComprehensiveAnalysisView: View {
         let analytics = calculateAnalytics(records, groupRecords)
         let evaluation = generateComprehensiveEvaluation(analytics)
         
-        return VStack(spacing: 16) {
-            HStack {
-                Text("综合评估")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.black)
-                Spacer()
-            }
+        return VStack(alignment: .leading, spacing: 16) {
+            AnalysisCardHeading(
+                phase: L10n.AnalysisCardCopy.phaseAction,
+                title: L10n.AnalysisCardCopy.trainingAdviceTitle,
+                detail: L10n.AnalysisCardCopy.trainingAdviceDetail,
+                accent: .green
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
             
             VStack(alignment: .leading, spacing: 12) {
                 Text(evaluation)
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
+                    .sharedTextStyle(
+                        SharedStyles.Text.body,
+                        color: SharedStyles.secondaryTextColor,
+                        lineSpacing: SharedStyles.bodyLineSpacing
+                    )
                     .lineLimit(nil)
                     .multilineTextAlignment(.leading)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 16)
@@ -441,39 +493,58 @@ struct ComprehensiveAnalysisView: View {
     }
     
     private func generateComprehensiveEvaluation(_ analytics: ArcheryAnalytics) -> String {
-        var evaluation = ""
+        var evaluationParts: [String] = []
         
         // 平均环数评估
         if analytics.averageRing >= 9.0 {
-            evaluation += "您的平均环数表现优秀，射击精度很高。"
+            evaluationParts.append(L10n.tr("analysis_comprehensive_eval_average_excellent"))
         } else if analytics.averageRing >= 8.0 {
-            evaluation += "您的平均环数表现良好，还有提升空间。"
+            evaluationParts.append(L10n.tr("analysis_comprehensive_eval_average_good"))
         } else {
-            evaluation += "您的平均环数需要加强练习，建议重点提升射击精度。"
+            evaluationParts.append(L10n.tr("analysis_comprehensive_eval_average_improve"))
         }
-        
-        evaluation += " "
-        
+
         // 稳定性评估
         if analytics.stabilityScore >= 80 {
-            evaluation += "稳定性表现出色，成绩波动较小。"
+            evaluationParts.append(L10n.tr("analysis_comprehensive_eval_stability_excellent"))
         } else if analytics.stabilityScore >= 60 {
-            evaluation += "稳定性中等，建议加强一致性训练。"
+            evaluationParts.append(L10n.tr("analysis_comprehensive_eval_stability_good"))
         } else {
-            evaluation += "稳定性需要改善，建议重点练习动作一致性。"
+            evaluationParts.append(L10n.tr("analysis_comprehensive_eval_stability_improve"))
         }
-        
-        evaluation += " "
-        
+
         // 疲劳指数评估
         if analytics.fatigueIndex <= 5 {
-            evaluation += "疲劳控制良好，能够保持持续的高水平表现。"
+            evaluationParts.append(L10n.tr("analysis_comprehensive_eval_fatigue_excellent"))
         } else if analytics.fatigueIndex <= 15 {
-            evaluation += "存在轻微疲劳影响，建议适当调整训练强度。"
+            evaluationParts.append(L10n.tr("analysis_comprehensive_eval_fatigue_good"))
         } else {
-            evaluation += "疲劳影响较明显，建议加强体能训练和休息调整。"
+            evaluationParts.append(L10n.tr("analysis_comprehensive_eval_fatigue_improve"))
         }
         
-        return evaluation
+        return evaluationParts.joined(separator: " ")
+    }
+
+    private func formatTrend(_ trend: Double) -> String {
+        guard trend.isFinite else { return "--" }
+        let sign = trend >= 0 ? "+" : ""
+        return "\(sign)\(String(format: "%.1f", trend))%"
+    }
+
+    private func trendMetricChip(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.white.opacity(0.72))
+
+            Text(value)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(.white)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color.white.opacity(0.12))
+        .cornerRadius(12)
     }
 }

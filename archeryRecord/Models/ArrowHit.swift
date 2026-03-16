@@ -56,6 +56,16 @@ struct ArrowHit: Identifiable, Codable {
         let dy = position.y - other.position.y
         return sqrt(dx * dx + dy * dy)
     }
+    
+    var scoreLabel: String {
+        if ringNumber == 11 {
+            return "X"
+        }
+        if score <= 0 || ringNumber == 0 {
+            return "M"
+        }
+        return "\(score)"
+    }
 }
 
 // MARK: - 重叠检测结果

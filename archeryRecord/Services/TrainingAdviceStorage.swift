@@ -9,8 +9,7 @@ class TrainingAdviceStorage {
         stored[key] = advice
         
         if let data = try? JSONEncoder().encode(stored) {
-            UserDefaults.standard.set(data, forKey: self.key)  // 使用类的 key 而不是局部变量
-            UserDefaults.standard.synchronize()
+            UserDefaults.standard.set(data, forKey: self.key)
         }
     }
     
@@ -36,6 +35,5 @@ class TrainingAdviceStorage {
     // 添加清除方法
     static func clear() {
         UserDefaults.standard.removeObject(forKey: key)
-        UserDefaults.standard.synchronize()
     }
-} 
+}

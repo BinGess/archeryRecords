@@ -48,6 +48,58 @@ struct TargetRing: Codable {
     }
 }
 
+struct TargetHitResult {
+    let position: CGPoint
+    let score: Int
+    let ringNumber: Int
+    let isMiss: Bool
+}
+
+struct TargetLayoutMetrics {
+    let containerSize: CGSize
+    let boundsSizeCm: CGSize
+    let scale: CGFloat
+    let spotCentersCm: [CGPoint]
+    let spotRadiusCm: Double
+    
+    var viewCenter: CGPoint {
+        CGPoint(x: containerSize.width / 2, y: containerSize.height / 2)
+    }
+    
+    var centerDotSize: CGFloat {
+        max(4, scale * 0.9)
+    }
+    
+    func pointInCentimeters(from viewPoint: CGPoint) -> CGPoint {
+        guard scale > 0 else { return .zero }
+        return CGPoint(
+            x: (viewPoint.x - viewCenter.x) / scale,
+            y: (viewPoint.y - viewCenter.y) / scale
+        )
+    }
+    
+    func pointInView(from pointCm: CGPoint) -> CGPoint {
+        CGPoint(
+            x: viewCenter.x + pointCm.x * scale,
+            y: viewCenter.y + pointCm.y * scale
+        )
+    }
+}
+
+private enum WAIndoorTripleSpotSpec {
+    static let centerDistanceCm: Double = 22.0
+    static let triangleHeightCm: Double = centerDistanceCm * sqrt(3) / 2
+    static let outerTenRadiusCm: Double = 2.0
+    static let innerTenRadiusCm: Double = 1.0
+}
+
+private enum WAIndoorSingleFaceSpec {
+    static let sixtyCmInnerTenRadiusCm: Double = 1.5
+    static let sixtyCmOuterTenRadiusCm: Double = 3.0
+    static let fortyCmInnerTenRadiusCm: Double = 1.0
+    static let fortyCmOuterTenRadiusCm: Double = 2.0
+}
+
 // MARK: - 靶面数据模型
 struct TargetFace: Codable, Identifiable {
     let id = UUID()
@@ -118,11 +170,11 @@ struct TargetFace: Codable, Identifiable {
         guard let ring = getRingByNumber(ringNumber) else { return .gray }
         
         switch ring.color {
-        case "gold": return .yellow
-        case "red": return .red
-        case "blue": return .blue
-        case "black": return .black
-        case "white": return .white
+        case "gold": return Color(red: 1.0, green: 0.843, blue: 0.0)
+        case "red": return Color(red: 0.882, green: 0.192, blue: 0.192)
+        case "blue": return Color(red: 0.0, green: 0.573, blue: 1.0)
+        case "black": return Color(red: 0.102, green: 0.102, blue: 0.102)
+        case "white": return Color(red: 0.973, green: 0.973, blue: 0.973)
         default: return .gray
         }
     }
@@ -139,6 +191,77 @@ struct TargetFace: Codable, Identifiable {
         guard let ring = getRingByNumber(ringNumber) else { return 0 }
         let radius = size.width / 2
         return (ring.outerRadius / (diameter / 2)) * radius
+    }
+    
+    var spotCentersCm: [CGPoint] {
+        switch type {
+        case .triple40cmVertical:
+            return [
+                CGPoint(x: 0, y: -WAIndoorTripleSpotSpec.centerDistanceCm),
+                .zero,
+                CGPoint(x: 0, y: WAIndoorTripleSpotSpec.centerDistanceCm)
+            ]
+        case .triple40cmTriangle:
+            return [
+                CGPoint(x: 0, y: -(WAIndoorTripleSpotSpec.triangleHeightCm * 2 / 3)),
+                CGPoint(x: -(WAIndoorTripleSpotSpec.centerDistanceCm / 2), y: WAIndoorTripleSpotSpec.triangleHeightCm / 3),
+                CGPoint(x: WAIndoorTripleSpotSpec.centerDistanceCm / 2, y: WAIndoorTripleSpotSpec.triangleHeightCm / 3)
+            ]
+        default:
+            return [.zero]
+        }
+    }
+    
+    var layoutBoundsCm: CGSize {
+        let radius = diameter / 2
+        let maxX = max(spotCentersCm.map { abs($0.x) + radius }.max() ?? radius, radius)
+        let maxY = max(spotCentersCm.map { abs($0.y) + radius }.max() ?? radius, radius)
+        return CGSize(width: maxX * 2, height: maxY * 2)
+    }
+    
+    func layoutMetrics(in containerSize: CGSize) -> TargetLayoutMetrics {
+        let bounds = layoutBoundsCm
+        let width = max(bounds.width, 1)
+        let height = max(bounds.height, 1)
+        let scale = min(containerSize.width / width, containerSize.height / height)
+        
+        return TargetLayoutMetrics(
+            containerSize: containerSize,
+            boundsSizeCm: bounds,
+            scale: scale,
+            spotCentersCm: spotCentersCm,
+            spotRadiusCm: diameter / 2
+        )
+    }
+    
+    func resolveHit(at pointCm: CGPoint) -> TargetHitResult {
+        let spotRadius = diameter / 2
+        let nearestSpot = spotCentersCm
+            .map { center in
+                (center, hypot(pointCm.x - center.x, pointCm.y - center.y))
+            }
+            .filter { $0.1 <= spotRadius }
+            .min { $0.1 < $1.1 }
+        
+        guard let (spotCenter, _) = nearestSpot else {
+            return TargetHitResult(position: pointCm, score: 0, ringNumber: 0, isMiss: true)
+        }
+        
+        let localRadius = hypot(pointCm.x - spotCenter.x, pointCm.y - spotCenter.y)
+        let ring = rings
+            .sorted(by: { $0.outerRadius < $1.outerRadius })
+            .first(where: { localRadius <= $0.outerRadius })
+        
+        guard let ring else {
+            return TargetHitResult(position: pointCm, score: 0, ringNumber: 0, isMiss: true)
+        }
+        
+        return TargetHitResult(
+            position: pointCm,
+            score: ring.score,
+            ringNumber: ring.ringNumber,
+            isMiss: false
+        )
     }
 }
 
@@ -243,9 +366,9 @@ class TargetFaceManager: ObservableObject {
             TargetRing(ringNumber: 6, score: 6, color: "blue", innerRadius: 8.0, outerRadius: 10.0),
             TargetRing(ringNumber: 7, score: 7, color: "red", innerRadius: 6.0, outerRadius: 8.0),
             TargetRing(ringNumber: 8, score: 8, color: "red", innerRadius: 4.0, outerRadius: 6.0),
-            TargetRing(ringNumber: 9, score: 9, color: "gold", innerRadius: 2.8, outerRadius: 4.0),
-            TargetRing(ringNumber: 10, score: 10, color: "gold", innerRadius: 1.5, outerRadius: 2.8),
-            TargetRing(ringNumber: 11, score: 10, color: "gold", innerRadius: 0.0, outerRadius: 1.5)
+            TargetRing(ringNumber: 9, score: 9, color: "gold", innerRadius: WAIndoorSingleFaceSpec.fortyCmOuterTenRadiusCm, outerRadius: 4.0),
+            TargetRing(ringNumber: 10, score: 10, color: "gold", innerRadius: WAIndoorSingleFaceSpec.fortyCmInnerTenRadiusCm, outerRadius: WAIndoorSingleFaceSpec.fortyCmOuterTenRadiusCm),
+            TargetRing(ringNumber: 11, score: 10, color: "gold", innerRadius: 0.0, outerRadius: WAIndoorSingleFaceSpec.fortyCmInnerTenRadiusCm)
         ]
         
         return TargetFace(
@@ -253,7 +376,7 @@ class TargetFaceManager: ObservableObject {
             diameter: 40.0,
             rings: rings,
             centerRadius: 1.0,
-            description: "40cm标准靶面完整版，包含1-10环"
+            description: "40cm室内单靶，采用WA规格，2cm环宽与1cm内10环"
         )
     }
     
@@ -262,9 +385,9 @@ class TargetFaceManager: ObservableObject {
             TargetRing(ringNumber: 6, score: 6, color: "blue", innerRadius: 8.0, outerRadius: 10.0),
             TargetRing(ringNumber: 7, score: 7, color: "red", innerRadius: 6.0, outerRadius: 8.0),
             TargetRing(ringNumber: 8, score: 8, color: "red", innerRadius: 4.0, outerRadius: 6.0),
-            TargetRing(ringNumber: 9, score: 9, color: "gold", innerRadius: 2.8, outerRadius: 4.0),
-            TargetRing(ringNumber: 10, score: 10, color: "gold", innerRadius: 1.5, outerRadius: 2.8),
-            TargetRing(ringNumber: 11, score: 10, color: "gold", innerRadius: 0.0, outerRadius: 1.5)
+            TargetRing(ringNumber: 9, score: 9, color: "gold", innerRadius: WAIndoorTripleSpotSpec.outerTenRadiusCm, outerRadius: 4.0),
+            TargetRing(ringNumber: 10, score: 10, color: "gold", innerRadius: WAIndoorTripleSpotSpec.innerTenRadiusCm, outerRadius: WAIndoorTripleSpotSpec.outerTenRadiusCm),
+            TargetRing(ringNumber: 11, score: 10, color: "gold", innerRadius: 0.0, outerRadius: WAIndoorTripleSpotSpec.innerTenRadiusCm)
         ]
         
         return TargetFace(
@@ -272,7 +395,7 @@ class TargetFaceManager: ObservableObject {
             diameter: 40.0,
             rings: rings,
             centerRadius: 1.0,
-            description: "40cm三联靶竖排版，包含6-10环，三个靶面垂直排列"
+            description: "40cm三联靶竖排版，采用WA室内规格，相邻靶心距22cm"
         )
     }
     
@@ -281,9 +404,9 @@ class TargetFaceManager: ObservableObject {
             TargetRing(ringNumber: 6, score: 6, color: "blue", innerRadius: 8.0, outerRadius: 10.0),
             TargetRing(ringNumber: 7, score: 7, color: "red", innerRadius: 6.0, outerRadius: 8.0),
             TargetRing(ringNumber: 8, score: 8, color: "red", innerRadius: 4.0, outerRadius: 6.0),
-            TargetRing(ringNumber: 9, score: 9, color: "gold", innerRadius: 2.0, outerRadius: 4.0),
-            TargetRing(ringNumber: 10, score: 10, color: "gold", innerRadius: 1.0, outerRadius: 2.0),
-            TargetRing(ringNumber: 11, score: 10, color: "gold", innerRadius: 0.0, outerRadius: 1.0)
+            TargetRing(ringNumber: 9, score: 9, color: "gold", innerRadius: WAIndoorTripleSpotSpec.outerTenRadiusCm, outerRadius: 4.0),
+            TargetRing(ringNumber: 10, score: 10, color: "gold", innerRadius: WAIndoorTripleSpotSpec.innerTenRadiusCm, outerRadius: WAIndoorTripleSpotSpec.outerTenRadiusCm),
+            TargetRing(ringNumber: 11, score: 10, color: "gold", innerRadius: 0.0, outerRadius: WAIndoorTripleSpotSpec.innerTenRadiusCm)
         ]
         
         return TargetFace(
@@ -291,7 +414,7 @@ class TargetFaceManager: ObservableObject {
             diameter: 40.0,
             rings: rings,
             centerRadius: 1.0,
-            description: "40cm三联靶三角形版，包含6-10环，三个靶面呈三角形排列"
+            description: "40cm三联靶三角形版，采用WA室内规格，三靶心按22cm边长等边三角形排列"
         )
     }
     
@@ -305,9 +428,9 @@ class TargetFaceManager: ObservableObject {
             TargetRing(ringNumber: 6, score: 6, color: "blue", innerRadius: 12.0, outerRadius: 15.0),
             TargetRing(ringNumber: 7, score: 7, color: "red", innerRadius: 9.0, outerRadius: 12.0),
             TargetRing(ringNumber: 8, score: 8, color: "red", innerRadius: 6.0, outerRadius: 9.0),
-            TargetRing(ringNumber: 9, score: 9, color: "gold", innerRadius: 4.2, outerRadius: 6.0),
-            TargetRing(ringNumber: 10, score: 10, color: "gold", innerRadius: 2.2, outerRadius: 4.2),
-            TargetRing(ringNumber: 11, score: 10, color: "gold", innerRadius: 0.0, outerRadius: 2.2)
+            TargetRing(ringNumber: 9, score: 9, color: "gold", innerRadius: WAIndoorSingleFaceSpec.sixtyCmOuterTenRadiusCm, outerRadius: 6.0),
+            TargetRing(ringNumber: 10, score: 10, color: "gold", innerRadius: WAIndoorSingleFaceSpec.sixtyCmInnerTenRadiusCm, outerRadius: WAIndoorSingleFaceSpec.sixtyCmOuterTenRadiusCm),
+            TargetRing(ringNumber: 11, score: 10, color: "gold", innerRadius: 0.0, outerRadius: WAIndoorSingleFaceSpec.sixtyCmInnerTenRadiusCm)
         ]
         
         return TargetFace(
@@ -315,7 +438,7 @@ class TargetFaceManager: ObservableObject {
             diameter: 60.0,
             rings: rings,
             centerRadius: 1.5,
-            description: "60cm室内靶面，用于18米室内射箭"
+            description: "60cm室内单靶，采用WA规格，3cm环宽与1.5cm内10环"
         )
     }
     

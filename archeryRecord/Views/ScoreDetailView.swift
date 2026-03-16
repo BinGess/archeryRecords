@@ -3,8 +3,8 @@ import Charts
 
 struct ScoreDetailView: View {
     let recordId: UUID
-    let recordType: String
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.revealAppTabBar) private var revealAppTabBar
     @EnvironmentObject var archeryStore: ArcheryStore
     @State private var showDeleteAlert = false
     @State private var trainingAdvice: TrainingAdvice?
@@ -14,7 +14,6 @@ struct ScoreDetailView: View {
     @State private var selectedTab = 0
     @State private var showEditView = false
     @State private var trendViewMode: TrendViewMode = .arrow
-    @EnvironmentObject private var tabBarManager: TabBarManager
 
     
     enum TrendViewMode {
@@ -25,11 +24,7 @@ struct ScoreDetailView: View {
     private let cozeService = CozeService()
     
     private var backgroundColor: Color {
-        #if os(iOS)
-        return Color(UIColor.systemGroupedBackground)
-        #else
-        return Color.gray.opacity(0.1)
-        #endif
+        SharedStyles.backgroundColor
     }
     
     var body: some View {
@@ -37,7 +32,7 @@ struct ScoreDetailView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     if let record = record {
-                        VStack(spacing: 16) {
+                        VStack(spacing: SharedStyles.Spacing.section) {
                             // Header info bar
                             headerInfoBar(record)
                             
@@ -68,16 +63,17 @@ struct ScoreDetailView: View {
                                     trainingAdvice = stored
                                 }
                             } else {
-                                await loadTrainingAdvice(for: record)
+                                // 已按需求关闭 AI 教练自动请求，避免详情页进入时触发服务端智能体调用。
+                                // await loadTrainingAdvice(for: record)
                             }
                         }
                     }
                 }
-                .background(backgroundColor)
+                .vibrantCanvasBackground()
             }
             
             // 底部固定按钮
-            HStack(spacing: 16) {
+            HStack(spacing: SharedStyles.Spacing.section) {
                 Button(action: {
                     showDeleteAlert = true
                 }) {
@@ -87,11 +83,10 @@ struct ScoreDetailView: View {
                         Text(L10n.Common.delete)
                             .foregroundColor(.red)
                     }
-                    .font(.system(size: 17, weight: .medium))
+                    .font(SharedStyles.Text.bodyEmphasis)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
-                    .background(Color.white)
-                    .cornerRadius(12)
+                    .clayCard(tint: SharedStyles.Accent.coral, radius: 16)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
                             .stroke(Color.red.opacity(0.3), lineWidth: 1)
@@ -103,18 +98,16 @@ struct ScoreDetailView: View {
                         Image(systemName: "square.and.arrow.up")
                         Text(L10n.Common.addmore)
                     }
-                    .font(.system(size: 17, weight: .medium))
+                    .font(SharedStyles.Text.bodyEmphasis)
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
-                    .background(Color.purple.opacity(0.9))
-                    .cornerRadius(12)
+                    .blockSurface(colors: SharedStyles.GradientSet.sunrise, radius: 16)
                 }
             }
             .padding(.horizontal)
-            .padding(.vertical, 12)
-            .background(Color.white)
-            .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: -2)
+            .padding(.vertical, SharedStyles.Spacing.dense)
+            .clayCard(tint: SharedStyles.Accent.sky, radius: 24)
         }
         #if os(iOS)
         .toolbar(.hidden, for: .tabBar)
@@ -124,32 +117,32 @@ struct ScoreDetailView: View {
         .customNavigationBar(
             title: L10n.Detail.title,
             leadingButton: {
-                tabBarManager.show()
+                revealAppTabBar?()
                 dismiss()
             },
             trailingButton: nil,
             trailingTitle: nil,
-            backgroundColor: .white,
-            foregroundColor: .black
+            backgroundColor: SharedStyles.backgroundColor,
+            foregroundColor: SharedStyles.primaryTextColor
         )
         .alert(L10n.Detail.deleteConfirmTitle, isPresented: $showDeleteAlert) {
             Button(L10n.Detail.deleteCancel, role: .cancel) { }
             Button(L10n.Detail.deleteConfirm, role: .destructive) {
                 archeryStore.deleteRecord(id: recordId)
+                revealAppTabBar?()
                 dismiss()
             }
         } message: {
             Text(L10n.Detail.deleteConfirmMessage)
         }
+        .hiddenAppTabBar()
         .onAppear {
             loadRecord()
-            tabBarManager.hide()
         }
         .navigationDestination(isPresented: $showEditView) {
             if let record = record {
                 ScoreInputView(editingRecord: record)
                     .environmentObject(archeryStore)
-                    .environmentObject(tabBarManager)
             }
         }
     }
@@ -159,35 +152,31 @@ struct ScoreDetailView: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(formatDate(record.date))
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.black)
+                    .sharedTextStyle(SharedStyles.Text.bodyEmphasis)
                 
-                HStack(spacing: 12) {
+                HStack(spacing: SharedStyles.Spacing.medium) {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray)
+                            .font(SharedStyles.Text.footnote)
+                            .foregroundColor(SharedStyles.secondaryTextColor)
                         Text(record.bowType)
-                            .font(.system(size: 14))
-                            .foregroundColor(.gray)
+                            .sharedTextStyle(SharedStyles.Text.caption, color: SharedStyles.secondaryTextColor)
                     }
                     
                     HStack(spacing: 4) {
                         Image(systemName: "location")
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray)
+                            .font(SharedStyles.Text.footnote)
+                            .foregroundColor(SharedStyles.secondaryTextColor)
                         Text(record.distance)
-                            .font(.system(size: 14))
-                            .foregroundColor(.gray)
+                            .sharedTextStyle(SharedStyles.Text.caption, color: SharedStyles.secondaryTextColor)
                     }
                     
                     HStack(spacing: 4) {
                         Image(systemName: "target")
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray)
-                        Text(record.targetType)
-                            .font(.system(size: 14))
-                            .foregroundColor(.gray)
+                            .font(SharedStyles.Text.footnote)
+                            .foregroundColor(SharedStyles.secondaryTextColor)
+                        Text(TargetTypeDisplay.primaryTitle(for: record.targetType))
+                            .sharedTextStyle(SharedStyles.Text.caption, color: SharedStyles.secondaryTextColor)
                             .fixedSize(horizontal: true, vertical: false)
                     }
                     
@@ -201,8 +190,7 @@ struct ScoreDetailView: View {
                 showEditView = true
             }) {
                 Text("编辑")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.purple)
+                    .sharedTextStyle(SharedStyles.Text.bodyEmphasis, color: SharedStyles.secondaryColor)
             }
         }
         .padding(.horizontal, 16)
@@ -211,61 +199,45 @@ struct ScoreDetailView: View {
     // MARK: - Total Score Card
     private func totalScoreCard(_ record: ArcheryRecord, scrollProxy: ScrollViewProxy) -> some View {
         VStack(spacing: 0) {
-            ZStack {
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(red: 0.4, green: 0.3, blue: 0.8),
-                        Color(red: 0.6, green: 0.4, blue: 0.9)
-                    ]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .cornerRadius(16)
+            VStack(spacing: SharedStyles.Spacing.section) {
+                HStack {
+                    Text("总成绩")
+                        .sharedTextStyle(SharedStyles.Text.bodyEmphasis, color: .white.opacity(0.92))
+                    
+                    Spacer()
+                }
                 
-                VStack(spacing: 16) {
-                    HStack {
-                        Text("总成绩")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white.opacity(0.9))
-                        
-                        Spacer()
+                VStack(spacing: 8) {
+                    Text("\(calculateTotalScore(record))")
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                    
+                    Text("共\(record.scores.count)箭")
+                        .sharedTextStyle(SharedStyles.Text.bodyEmphasis, color: .white.opacity(0.9))
+                }
+                
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("训练时长: 45分钟")
+                            .sharedTextStyle(SharedStyles.Text.caption, color: .white.opacity(0.82))
+                        Text("消耗卡路里: 120千卡")
+                            .sharedTextStyle(SharedStyles.Text.footnote, color: .white.opacity(0.68))
                     }
                     
-                    VStack(spacing: 8) {
-                        Text("\(calculateTotalScore(record))")
-                            .font(.system(size: 48, weight: .bold))
-                            .foregroundColor(.white)
-                        
-                        Text("共\(record.scores.count)箭")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white.opacity(0.9))
-                    }
+                    Spacer()
                     
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("训练时长: 45分钟")
-                                .font(.system(size: 14))
-                                .foregroundColor(.white.opacity(0.8))
-                            Text("消耗卡路里: 120千卡")
-                                .font(.system(size: 12))
-                                .foregroundColor(.white.opacity(0.6))
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            scrollProxy.scrollTo("scoreDetails", anchor: .top)
                         }
-                        
-                        Spacer()
-                        
-                        Button(action: {
-                            withAnimation(.easeInOut(duration: 0.5)) {
-                                scrollProxy.scrollTo("scoreDetails", anchor: .top)
-                            }
-                        }) {
-                            Text("点击查看详情 →")
-                                .font(.system(size: 12))
-                                .foregroundColor(.white.opacity(0.6))
-                        }
+                    }) {
+                        Text("点击查看详情 →")
+                            .sharedTextStyle(SharedStyles.Text.footnote, color: .white.opacity(0.76))
                     }
                 }
-                .padding(20)
             }
+            .padding(18)
+            .blockSurface(colors: [SharedStyles.Accent.sky, SharedStyles.secondaryColor], radius: 24)
         }
         .padding(.horizontal, 16)
     }
@@ -274,16 +246,15 @@ struct ScoreDetailView: View {
     private func coreMetricsSection(_ record: ArcheryRecord) -> some View {
         let analytics = calculateAnalytics(record)
         
-        return VStack(spacing: 16) {
+        return VStack(spacing: SharedStyles.Spacing.section) {
             HStack {
                 Text("核心指标")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.black)
+                    .sharedTextStyle(SharedStyles.Text.title)
                 Spacer()
             }
             .padding(.horizontal, 16)
             
-            HStack(spacing: 12) {
+            HStack(spacing: SharedStyles.Spacing.medium) {
                 // 平均环数
                 MetricCard(
                     icon: "target",
@@ -304,7 +275,7 @@ struct ScoreDetailView: View {
             }
             .padding(.horizontal, 16)
             
-            HStack(spacing: 12) {
+            HStack(spacing: SharedStyles.Spacing.medium) {
                 // 疲劳指数
                 MetricCard(
                     icon: "bolt.fill",
@@ -329,32 +300,31 @@ struct ScoreDetailView: View {
     
     // MARK: - Score Trend Chart
     private func scoreTrendChart(_ record: ArcheryRecord) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: SharedStyles.Spacing.section) {
             HStack {
                 Text("成绩趋势分析")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.black)
+                    .sharedTextStyle(SharedStyles.Text.title)
                 Spacer()
                 
                 HStack(spacing: 8) {
                     Button("箭支") {
                         trendViewMode = .arrow
                     }
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(trendViewMode == .arrow ? .white : .gray)
+                    .font(SharedStyles.Text.caption)
+                    .foregroundColor(trendViewMode == .arrow ? .white : SharedStyles.secondaryTextColor)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(trendViewMode == .arrow ? Color.purple : Color.gray.opacity(0.1))
+                    .background(trendViewMode == .arrow ? SharedStyles.secondaryColor : SharedStyles.elevatedSurfaceColor)
                     .cornerRadius(8)
                     
                     Button("累计") {
                         trendViewMode = .cumulative
                     }
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(trendViewMode == .cumulative ? .white : .gray)
+                    .font(SharedStyles.Text.caption)
+                    .foregroundColor(trendViewMode == .cumulative ? .white : SharedStyles.secondaryTextColor)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(trendViewMode == .cumulative ? Color.purple : Color.gray.opacity(0.1))
+                    .background(trendViewMode == .cumulative ? SharedStyles.secondaryColor : SharedStyles.elevatedSurfaceColor)
                     .cornerRadius(8)
                 }
             }
@@ -369,14 +339,14 @@ struct ScoreDetailView: View {
                             x: .value("箭支", index + 1),
                             y: .value("分数", scoreValue)
                         )
-                        .foregroundStyle(Color.purple)
+                        .foregroundStyle(SharedStyles.secondaryColor)
                         .lineStyle(StrokeStyle(lineWidth: 3))
                         
                         PointMark(
                             x: .value("箭支", index + 1),
                             y: .value("分数", scoreValue)
                         )
-                        .foregroundStyle(Color.purple)
+                        .foregroundStyle(SharedStyles.secondaryColor)
                         .symbolSize(50)
                     }
                 } else {
@@ -392,14 +362,14 @@ struct ScoreDetailView: View {
                             x: .value("箭支", index + 1),
                             y: .value("累计分数", cumulativeScore)
                         )
-                        .foregroundStyle(Color.purple)
+                        .foregroundStyle(SharedStyles.secondaryColor)
                         .lineStyle(StrokeStyle(lineWidth: 3))
                         
                         PointMark(
                             x: .value("箭支", index + 1),
                             y: .value("累计分数", cumulativeScore)
                         )
-                        .foregroundStyle(Color.purple)
+                        .foregroundStyle(SharedStyles.secondaryColor)
                         .symbolSize(50)
                     }
                 }
@@ -420,10 +390,8 @@ struct ScoreDetailView: View {
                 }
             }
         }
-        .padding(.vertical, 16)
-        .background(Color.white)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .padding(.vertical, SharedStyles.Spacing.section)
+        .clayCard(tint: SharedStyles.secondaryColor, radius: 18)
         .padding(.horizontal, 16)
     }
     
@@ -432,39 +400,38 @@ struct ScoreDetailView: View {
         let analytics = calculateAnalytics(record)
         let trends = calculateTrends(for: record)
         
-        return VStack(spacing: 16) {
+        return VStack(spacing: SharedStyles.Spacing.section) {
             HStack {
                 Text("快速统计")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.black)
+                    .sharedTextStyle(SharedStyles.Text.title)
                 Spacer()
             }
             .padding(.horizontal, 16)
             
-            HStack(spacing: 12) {
+            HStack(spacing: SharedStyles.Spacing.medium) {
                 QuickStatCard(
-                    icon: "🎯",
+                    iconSystemName: "target",
                     title: "平均分",
                     value: String(format: "%.1f", analytics.averageRing),
                     trend: trends.averageTrend
                 )
                 
                 QuickStatCard(
-                    icon: "📈",
+                    iconSystemName: "chart.line.uptrend.xyaxis",
                     title: "稳定性",
                     value: String(format: "%.0f%%", analytics.stabilityScore),
                     trend: trends.stabilityTrend
                 )
                 
                 QuickStatCard(
-                    icon: "⚡",
+                    iconSystemName: "bolt.fill",
                     title: "疲劳度",
                     value: String(format: "%.0f%%", analytics.fatigueIndex),
                     trend: trends.fatigueTrend
                 )
                 
                 QuickStatCard(
-                    icon: "🏆",
+                    iconSystemName: "scope",
                     title: "10环率",
                     value: String(format: "%.0f%%", analytics.tenRingRate),
                     trend: trends.tenRingTrend
@@ -492,7 +459,7 @@ struct ScoreDetailView: View {
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.top, 16)
+            .padding(.top, SharedStyles.Spacing.section)
             
             VStack {
                 switch selectedTab {
@@ -509,29 +476,25 @@ struct ScoreDetailView: View {
                 }
             }
         }
-        .background(Color.white)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .clayCard(tint: SharedStyles.Accent.sky, radius: 18)
         .padding(.horizontal, 16)
     }
     
     // MARK: - Raw Data Section
     private func rawDataSection(_ record: ArcheryRecord) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: SharedStyles.Spacing.section) {
             HStack {
                 Text("成绩详情")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.black)
+                    .sharedTextStyle(SharedStyles.Text.title)
                 Spacer()
             }
             .padding(.horizontal, 16)
             
-            VStack(spacing: 12) {
+            VStack(spacing: SharedStyles.Spacing.medium) {
                 ForEach(Array(record.scores.enumerated()), id: \.offset) { index, score in
                     HStack {
                         Text("第\(index + 1)箭")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.black)
+                            .sharedTextStyle(SharedStyles.Text.caption, color: SharedStyles.primaryTextColor)
                             .frame(width: 60, alignment: .leading)
                         
                         Spacer()
@@ -541,21 +504,18 @@ struct ScoreDetailView: View {
                         Spacer()
                         
                         Text("\(scoreToInt(score))")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.black)
+                            .sharedTextStyle(SharedStyles.Text.bodyEmphasis)
                             .frame(width: 40, alignment: .trailing)
                     }
-                    .padding(.vertical, 12)
-                    .background(Color.gray.opacity(0.05))
+                    .padding(.vertical, SharedStyles.Spacing.dense)
+                    .background(SharedStyles.elevatedSurfaceColor.opacity(0.82))
                     .cornerRadius(8)
                 }
             }
             .padding(.horizontal, 16)
         }
-        .padding(.vertical, 16)
-        .background(Color.white)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .padding(.vertical, SharedStyles.Spacing.section)
+        .clayCard(tint: SharedStyles.primaryColor, radius: 18)
         .padding(.horizontal, 16)
     }
     
@@ -564,12 +524,11 @@ struct ScoreDetailView: View {
         let analytics = calculateAnalytics(record)
         let ringDistribution = calculateRingDistribution(record)
         
-        return VStack(alignment: .leading, spacing: 20) {
+        return VStack(alignment: .leading, spacing: SharedStyles.Spacing.extraLarge) {
             // 环数分布图表
             VStack(alignment: .leading, spacing: 12) {
                 Text("环数分布")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.black)
+                    .sharedTextStyle(SharedStyles.Text.title)
                 
                 Chart {
                     ForEach(ringDistribution, id: \.ring) { item in
@@ -592,8 +551,7 @@ struct ScoreDetailView: View {
             // 详细统计
             VStack(alignment: .leading, spacing: 12) {
                 Text("详细统计")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.black)
+                    .sharedTextStyle(SharedStyles.Text.title)
                 
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 12) {
                     ForEach(ringDistribution, id: \.ring) { item in
@@ -610,54 +568,45 @@ struct ScoreDetailView: View {
             // 分析建议
             VStack(alignment: .leading, spacing: 8) {
                 Text("分析建议")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.black)
+                    .sharedTextStyle(SharedStyles.Text.title)
                 
                 Text(generateShootingAnalysis(analytics: analytics))
-                    .font(.system(size: 14))
-                    .foregroundColor(.gray)
+                    .sharedTextStyle(SharedStyles.Text.body, color: SharedStyles.secondaryTextColor, lineSpacing: SharedStyles.bodyLineSpacing)
                     .lineLimit(nil)
             }
         }
-        .padding(16)
+        .padding(14)
     }
     
     private func accuracyAnalysisTab(_ record: ArcheryRecord) -> some View {
         let stats = calculateAccuracyStats(record)
         
-        return VStack(alignment: .leading, spacing: 20) {
+        return VStack(alignment: .leading, spacing: SharedStyles.Spacing.extraLarge) {
             // 精准度评估
             VStack(alignment: .leading, spacing: 12) {
                 Text("精准度评估")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.black)
+                    .sharedTextStyle(SharedStyles.Text.title)
                 
                 HStack(spacing: 20) {
                     VStack {
                         Text(String(format: "%.1f", stats.spreadRadius))
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(.blue)
+                            .sharedTextStyle(SharedStyles.Text.compactValue, color: .blue)
                         Text("散布半径")
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray)
+                            .sharedTextStyle(SharedStyles.Text.footnote, color: SharedStyles.secondaryTextColor)
                     }
                     
                     VStack {
                         Text(stats.groupTightness)
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(.green)
+                            .sharedTextStyle(SharedStyles.Text.compactValue, color: .green)
                         Text("组别紧密度")
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray)
+                            .sharedTextStyle(SharedStyles.Text.footnote, color: SharedStyles.secondaryTextColor)
                     }
                     
                     VStack {
                         Text(stats.accuracyGrade)
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(.orange)
+                            .sharedTextStyle(SharedStyles.Text.compactValue, color: .orange)
                         Text("精准度等级")
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray)
+                            .sharedTextStyle(SharedStyles.Text.footnote, color: SharedStyles.secondaryTextColor)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -666,55 +615,46 @@ struct ScoreDetailView: View {
             // 分析建议
             VStack(alignment: .leading, spacing: 8) {
                 Text("分析建议")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.black)
+                    .sharedTextStyle(SharedStyles.Text.title)
                 
                 Text(generateAccuracyAnalysis(stats: stats))
-                    .font(.system(size: 14))
-                    .foregroundColor(.gray)
+                    .sharedTextStyle(SharedStyles.Text.body, color: SharedStyles.secondaryTextColor, lineSpacing: SharedStyles.bodyLineSpacing)
                     .lineLimit(nil)
             }
         }
-        .padding(16)
+        .padding(14)
     }
     
     private func stabilityAnalysisTab(_ record: ArcheryRecord) -> some View {
         let analytics = calculateAnalytics(record)
         let stabilityData = calculateStabilityData(record)
         
-        return VStack(alignment: .leading, spacing: 20) {
+        return VStack(alignment: .leading, spacing: SharedStyles.Spacing.extraLarge) {
             // 稳定性指标
             VStack(alignment: .leading, spacing: 12) {
                 Text("稳定性指标")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.black)
+                    .sharedTextStyle(SharedStyles.Text.title)
                 
                 HStack(spacing: 20) {
                     VStack {
                         Text(String(format: "%.0f", analytics.stabilityScore))
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(getStabilityLevelColor(analytics.stabilityScore))
+                            .sharedTextStyle(SharedStyles.Text.compactValue, color: getStabilityLevelColor(analytics.stabilityScore))
                         Text("稳定性评分")
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray)
+                            .sharedTextStyle(SharedStyles.Text.footnote, color: SharedStyles.secondaryTextColor)
                     }
                     
                     VStack {
                         Text(String(format: "%.2f", stabilityData.coefficientOfVariation))
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(.blue)
+                            .sharedTextStyle(SharedStyles.Text.compactValue, color: .blue)
                         Text("变异系数")
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray)
+                            .sharedTextStyle(SharedStyles.Text.footnote, color: SharedStyles.secondaryTextColor)
                     }
                     
                     VStack {
                         Text(getStabilityLevel(analytics.stabilityScore))
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(getStabilityLevelColor(analytics.stabilityScore))
+                            .sharedTextStyle(SharedStyles.Text.compactValue, color: getStabilityLevelColor(analytics.stabilityScore))
                         Text("稳定性等级")
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray)
+                            .sharedTextStyle(SharedStyles.Text.footnote, color: SharedStyles.secondaryTextColor)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -723,46 +663,39 @@ struct ScoreDetailView: View {
             // 分析建议
             VStack(alignment: .leading, spacing: 8) {
                 Text("分析建议")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.black)
+                    .sharedTextStyle(SharedStyles.Text.title)
                 
                 Text(generateStabilityAnalysis(analytics: analytics, stabilityData: stabilityData))
-                    .font(.system(size: 14))
-                    .foregroundColor(.gray)
+                    .sharedTextStyle(SharedStyles.Text.body, color: SharedStyles.secondaryTextColor, lineSpacing: SharedStyles.bodyLineSpacing)
                     .lineLimit(nil)
             }
         }
-        .padding(16)
+        .padding(14)
     }
     
     private func fatigueAnalysisTab(_ record: ArcheryRecord) -> some View {
         let analytics = calculateAnalytics(record)
         let fatigueData = calculateFatigueData(record)
         
-        return VStack(alignment: .leading, spacing: 20) {
+        return VStack(alignment: .leading, spacing: SharedStyles.Spacing.extraLarge) {
             // 疲劳度指标
             VStack(alignment: .leading, spacing: 12) {
                 Text("疲劳度指标")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.black)
+                    .sharedTextStyle(SharedStyles.Text.title)
                 
                 HStack(spacing: 20) {
                     VStack {
                         Text(String(format: "%.0f%%", analytics.fatigueIndex))
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(getFatigueIndexColor(analytics.fatigueIndex))
+                            .sharedTextStyle(SharedStyles.Text.compactValue, color: getFatigueIndexColor(analytics.fatigueIndex))
                         Text("疲劳指数")
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray)
+                            .sharedTextStyle(SharedStyles.Text.footnote, color: SharedStyles.secondaryTextColor)
                     }
                     
                     VStack {
                         Text(getFatigueLevel(analytics.fatigueIndex))
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(getFatigueIndexColor(analytics.fatigueIndex))
+                            .sharedTextStyle(SharedStyles.Text.compactValue, color: getFatigueIndexColor(analytics.fatigueIndex))
                         Text("疲劳等级")
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray)
+                            .sharedTextStyle(SharedStyles.Text.footnote, color: SharedStyles.secondaryTextColor)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -771,8 +704,7 @@ struct ScoreDetailView: View {
             // 疲劳趋势图
             VStack(alignment: .leading, spacing: 12) {
                 Text("疲劳趋势")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.black)
+                    .sharedTextStyle(SharedStyles.Text.title)
                 
                 Chart {
                     ForEach(Array(fatigueData.enumerated()), id: \.offset) { index, score in
@@ -798,21 +730,19 @@ struct ScoreDetailView: View {
             // 训练建议
             VStack(alignment: .leading, spacing: 8) {
                 Text("训练建议")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.black)
+                    .sharedTextStyle(SharedStyles.Text.title)
                 
                 Text(generateFatigueTrainingAdvice(index: analytics.fatigueIndex))
-                    .font(.system(size: 14))
-                    .foregroundColor(.gray)
+                    .sharedTextStyle(SharedStyles.Text.body, color: SharedStyles.secondaryTextColor, lineSpacing: SharedStyles.bodyLineSpacing)
                     .lineLimit(nil)
             }
         }
-        .padding(16)
+        .padding(14)
     }
     
     // MARK: - Helper Functions
     private func loadRecord() {
-        record = archeryStore.getRecord(id: recordId, type: recordType)
+        record = archeryStore.getRecord(id: recordId)
     }
     
     private func calculateTotalScore(_ record: ArcheryRecord) -> Int {
@@ -860,24 +790,34 @@ struct ScoreDetailView: View {
         guard !isLoadingAdvice else { return }
         
         await MainActor.run {
-            isLoadingAdvice = true
-            adviceError = nil
+            isLoadingAdvice = false
+            adviceError = NSError(
+                domain: "AICoach",
+                code: 1002,
+                userInfo: [NSLocalizedDescriptionKey: "AI教练功能已关闭"]
+            )
         }
-        
-        do {
-            let trainingData = cozeService.prepareTrainingData(record: record)
-            let advice = try await cozeService.getTrainingAdvice(data: trainingData)
-            await MainActor.run {
-                trainingAdvice = advice
-                isLoadingAdvice = false
-                TrainingAdviceStorage.save(advice)
-            }
-        } catch {
-            await MainActor.run {
-                adviceError = error
-                isLoadingAdvice = false
-            }
-        }
+
+        // 已按需求关闭服务端 AI 教练请求，保留原逻辑注释以便后续恢复。
+        // await MainActor.run {
+        //     isLoadingAdvice = true
+        //     adviceError = nil
+        // }
+        //
+        // do {
+        //     let trainingData = cozeService.prepareTrainingData(record: record)
+        //     let advice = try await cozeService.getTrainingAdvice(data: trainingData)
+        //     await MainActor.run {
+        //         trainingAdvice = advice
+        //         isLoadingAdvice = false
+        //         TrainingAdviceStorage.save(advice)
+        //     }
+        // } catch {
+        //     await MainActor.run {
+        //         adviceError = error
+        //         isLoadingAdvice = false
+        //     }
+        // }
     }
     
     private func calculateAnalytics(_ record: ArcheryRecord) -> ArcheryAnalytics {
@@ -947,11 +887,8 @@ struct ScoreDetailView: View {
 
 #Preview {
     NavigationStack {
-        ScoreDetailView(
-            recordId: UUID(),
-            recordType: "single"
-        )
-        .environmentObject(ArcheryStore())
-        .environmentObject(TabBarManager())
+        ScoreDetailView(recordId: UUID())
+            .environmentObject(ArcheryStore())
+            .environmentObject(TabBarManager())
     }
 }

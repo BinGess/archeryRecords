@@ -1,0 +1,469 @@
+// Common
+"save" = "保存";
+"cancel" = "キャンセル";
+"back" = "戻る";
+"noData" = "データなし";
+
+// Navigation Titles
+"nav_title_record" = "1エンド記録";
+"nav_title_group_record" = "試合記録";
+"nav_title_analysis" = "スコア分析";
+
+// Analysis Types
+"analysis_trend" = "スコア推移";
+"analysis_stability" = "安定性";
+"analysis_accuracy" = "精度";
+
+// Time Range
+"time_today" = "今日";
+"time_week" = "今週";
+"time_month" = "今月";
+"time_year" = "今年";
+
+// Basic Options
+"basic_options" = "基本設定";
+"bow_type" = "弓種";
+"distance" = "距離";
+"target_type" = "的面";
+
+// Score Input
+"score_input" = "スコア入力";
+"group_score_input" = "%lldエンド目のスコア入力";
+"group_score_total" = "スコア: %lld";
+
+// Statistics
+"stats_trend" = "推移分析";
+"stats_info" = "統計情報";
+"stats_hit" = "ヒット統計";
+"stats_avg" = "平均";
+"stats_max" = "最高";
+"stats_min" = "最低";
+"stats_10_rate" = "10点率";
+"stats_9_rate" = "9点率";
+"stats_8_rate" = "8点率";
+
+// Match Type
+"match_type" = "%1$lldエンド / 1エンド%2$lld射 / 合計%3$lld射";
+
+// Tab
+"tab_record" = "記録";
+"tab_analysis" = "分析";
+
+// Content
+"content_training_record" = "トレーニング記録";
+"content_empty_state_prompt" = "準備はできましたか？最初の1射を記録しましょう。";
+"content_app_title" = "イエローフィッシュアーチェリー";
+"content_view_detail" = "詳細を見る";
+"content_hide_detail" = "詳細を隠す";
+"content_delete" = "削除";
+"content_score" = "スコア";
+"content_total_score" = "合計点";
+"format_date_time" = "yyyy/MM/dd HH:mm";
+
+"analysis_title" = "スコア分析";
+"analysis_type" = "分析タイプ";
+"analysis_time_range" = "期間";
+"analysis_trend" = "スコア推移";
+"analysis_comprehensive" = "総合分析";
+"analysis_stability" = "安定性";
+"analysis_accuracy" = "精度";
+"analysis_no_data" = "データがありません";
+"analysis_date" = "日付";
+"analysis_score" = "スコア";
+"analysis_standard_deviation" = "標準偏差";
+"analysis_trend_analysis" = "推移分析";
+"analysis_stats_info" = "統計情報";
+"analysis_hit_stats" = "ヒット統計";
+"analysis_avg_score" = "平均スコア";
+"analysis_max_score" = "最高スコア";
+"analysis_min_score" = "最低スコア";
+"analysis_ten_rate" = "10点率";
+"analysis_nine_rate" = "9点率";
+"analysis_eight_rate" = "8点率";
+"analysis_ring_rate" = "%lld点: %.1f%%";
+
+// Comprehensive Analysis
+"analysis_overall_score" = "総合スコア";
+"analysis_average_per_arrow" = "1射平均";
+"analysis_total_arrows" = "総射数";
+"analysis_ability_analysis" = "能力分析";
+"analysis_detailed_data" = "詳細データ";
+"analysis_stability_level" = "安定性レベル";
+"analysis_hit_rate" = "命中率";
+"analysis_consistency" = "一貫性";
+"analysis_recent_trend" = "最近の傾向";
+
+// Score Details
+"detail_title" = "アーチェリースコア詳細";
+"detail_total_score" = "合計点";
+"detail_like_count" = "いいね(%lld)";
+"detail_ring_distribution" = "点数分布";
+"detail_average_score" = "1射平均 %.2f";
+"detail_arrow_scores" = "各射のスコア";
+"detail_delete_record" = "記録を削除";
+"detail_record_again" = "もう一度記録する";
+"detail_delete_confirm_title" = "削除の確認";
+"detail_delete_confirm_message" = "この操作は元に戻せません。削除してもよろしいですか？";
+"detail_delete_cancel" = "キャンセル";
+"detail_delete_confirm" = "削除";
+
+"detail_basic_info" = "スコアタイプ";
+"detail_score" = "合計点";
+"detail_score_distribution" = "点数分布";
+
+// Group Score Details
+"group_detail_title" = "試合スコア詳細";
+"group_detail_basic_info" = "基本情報";
+"group_detail_match_info" = "試合情報";
+"group_detail_total_score" = "合計点";
+"group_detail_like_count" = "いいね(%lld)";
+"group_detail_group_scores" = "各エンドのスコア";
+"group_detail_group_number" = "第%lldエンド";
+"group_detail_group_score" = "スコア: %lld";
+"group_detail_average_per_arrow" = "1射平均 %.2f";
+"group_detail_ring_distribution" = "点数分布";
+"group_detail_delete_record" = "記録を削除";
+"group_detail_record_again" = "もう一試合記録する";
+"group_detail_delete_confirm" = "削除の確認";
+"group_detail_delete_message" = "この操作は元に戻せません。削除してもよろしいですか？";
+
+// Group Score Input
+"group_input_title" = "試合スコア入力";
+"group_input_basic_options" = "基本設定";
+"group_input_bow_type" = "弓種";
+"group_input_distance" = "距離";
+"group_input_target_type" = "的面";
+"group_input_match_type" = "試合形式";
+"group_input_score" = "%1$lldエンド目のスコア入力 (スコア: %2$lld)";
+"group_input_save" = "スコアを保存";
+"group_input_select_bow_type" = "弓種を選択";
+"group_input_select_distance" = "距離を選択";
+"group_input_select_target_type" = "的面を選択";
+"group_input_select_match_type" = "試合形式を選択";
+
+// Bow Types
+"bow_type_compound" = "コンパウンド";
+"bow_type_recurve" = "リカーブ";
+"bow_type_traditional" = "伝統弓";
+"bow_type_guanggong" = "光弓";
+"bow_type_meilie" = "美獵";
+
+// Distance Options
+"distance_10m" = "10m";
+"distance_18m" = "18m";
+"distance_30m" = "30m";
+"distance_50m" = "50m";
+"distance_70m" = "70m";
+
+// Target Face Options
+"target_type_122cm_standard" = "122cm 標準屋外";
+"target_type_80cm_full" = "80cm フルフェイス";
+"target_type_40cm_full" = "40cm 標準フル";
+"target_type_40cm_triple_vertical" = "40cm トリプル縦";
+"target_type_40cm_triple_triangle" = "40cm トリプル三角";
+"target_type_60cm_indoor" = "60cm インドア";
+"target_type_compound_inner10" = "コンパウンド内10点";
+
+// Single Round Input
+"single_input_title" = "1エンド入力";
+"single_input_basic_options" = "基本設定";
+"single_input_score_input" = "スコア入力";
+"single_input_total_score" = "合計: %lld";
+"single_input_save" = "スコアを保存";
+"single_input_select_bow_type" = "弓種を選択";
+"single_input_select_distance" = "距離を選択";
+"single_input_select_target_type" = "的面を選択";
+"single_input_arrow_number" = "%lld射目";
+
+"group_input_number_of_groups" = "エンド数";
+"group_input_arrows_per_group" = "1エンドの射数";
+"common_done" = "完了";
+
+"score_input_title" = "スコア入力";
+"score_input_select" = "スコアを選択";
+"score_input_current" = "現在のスコア: %@";
+"score_input_cancel" = "キャンセル";
+
+"format_short_date" = "MM-dd";
+"analysis_count" = "回数";
+
+// Stability Analysis
+"analysis_stability_level_high" = "非常に安定";
+"analysis_stability_level_medium" = "比較的安定";
+"analysis_stability_level_low" = "安定性が低い";
+"analysis_stability_description" = "値が低いほど安定しています";
+"analysis_avg_deviation" = "平均変動";
+"analysis_max_deviation" = "最大変動";
+"analysis_min_deviation" = "最小変動";
+
+// Accuracy Analysis
+"analysis_total_hit_rate" = "総命中率";
+"analysis_gold_rate" = "ゴールド率";
+"analysis_average_deviation" = "平均変動";
+
+"common_back" = "戻る";
+"common_save" = "保存";
+"common_cancel" = "キャンセル";
+"common_delete" = "削除";
+"common_done" = "完了";
+"common_addmore" = "追加";
+
+// App Title
+"content.appTitle" = "イエローフィッシュアーチェリー";
+
+"settings_title"="設定";
+"settings_language" = "言語";
+"settings_language_selection"  = "言語を選択";
+"settings_data_sync" = "データ同期";
+"settings_icloud_sync" = "iCloudに同期";
+"settings_icloud_sync_description" = "オンにすると、iCloud が利用可能な場合に射箭記録を自動で同期します。";
+"pro_badge" = "PRO";
+"pro_lifetime_title" = "Archery Pro を解放";
+"pro_lifetime_subtitle" = "一度の購入で、iCloud 同期と的面入力を永久に解放します。より正確に記録でき、今後の分析精度も高められます。";
+"pro_unlock_now" = "Pro を購入";
+"pro_lifetime_price_hint" = "買い切りで永久利用";
+"pro_restore" = "購入を復元";
+"pro_purchase_unavailable" = "現在は購入情報を取得できません。しばらくしてからお試しください。";
+"pro_purchase_pending" = "購入処理は送信済みです。システムの確認をお待ちください。";
+"pro_purchase_failed" = "購入の検証に失敗しました。後でもう一度お試しください。";
+"pro_benefit_icloud_title" = "iCloud 自動同期";
+"pro_benefit_icloud_body" = "トレーニング記録を複数デバイスでそろえやすくなり、機種変更や再インストール後の復元も楽になります。";
+"pro_benefit_visual_title" = "的面入力でより正確に";
+"pro_benefit_visual_body" = "点数だけでなく実際の着点も記録できるため、今後のグルーピングや偏り分析をより正確に行えます。";
+"pro_benefit_analysis_title" = "将来の分析精度を向上";
+"pro_benefit_analysis_body" = "着点データと履歴がそろうほど、安定性や傾向分析の信頼性が高まります。";
+"pro_entry_icloud_title" = "iCloud 同期を有効化";
+"pro_entry_icloud_subtitle" = "トレーニング記録を複数デバイスで自動的にそろえます。";
+"pro_entry_visual_title" = "的面入力を有効化";
+"pro_entry_visual_subtitle" = "各矢の着点をより正確に記録します。";
+"pro_entry_analytics_title" = "プロ分析を解放";
+"pro_entry_analytics_subtitle" = "命中率、安定性、疲労分析を確認できます。";
+"pro_cta_price_fallback" = "永久解放";
+"pro_already_unlocked" = "解放済み";
+"analysis_pro_title" = "プロ分析は Pro で利用できます";
+"analysis_pro_subtitle" = "無料版では総合分析を表示します。Pro にアップグレードすると、命中率、安定性、疲労分析を確認できます。";
+"analysis_pro_cta" = "Pro を購入して専門分析を見る";
+"analysis_pro_feature_accuracy" = "命中率";
+"analysis_pro_feature_stability" = "安定性";
+"analysis_pro_feature_fatigue" = "疲労分析";
+"settings_about" = "このアプリについて";
+"settings_feedback" = "フィードバック";
+"settings_version" = "バージョン";
+"settings_mail_unavailable_title" = "メールを送信できません";
+"settings_mail_unavailable_message" = "このデバイスにはメールアカウントが設定されていません。設定後に再試行するか、baibin1989@foxmail.com へ直接メールしてください。";
+"settings_feedback_subject" = "アーチェリー記録アプリへのフィードバック";
+"settings_feedback_body" = "ご意見・ご感想をこちらにご入力ください:\n\n";
+
+"about_title" = "このアプリについて";
+"about_app_name" = "アーチェリー記録";
+"about_version_format" = "バージョン %@";
+"about_description" = "アーチェリー愛好家のために設計されたスコア記録・分析ツールです。";
+"about_contact" = "お問い合わせ";
+
+"content_record_count" = "%lld件の記録";
+"content_record_list" = "スコア一覧";
+"content_round_summary" = "%1$lldエンド × %2$lld射";
+"content_points_unit" = "点";
+
+"analysis_fatigue" = "疲労分析";
+"analysis_accuracy_score" = "精度スコア";
+"analysis_average_ring" = "平均点";
+"analysis_accuracy_grade" = "精度レベル";
+"analysis_ten_ring_rate" = "10点率";
+"analysis_group_tightness" = "グルーピング密度";
+"analysis_ring_distribution" = "点数分布";
+"analysis_ring_axis" = "点数";
+"analysis_count_axis" = "回数";
+"analysis_accuracy_metrics" = "精度指標";
+"analysis_spread_radius" = "散布半径";
+"analysis_x_ring_count" = "X数";
+"analysis_ten_ring_count" = "10点数";
+"analysis_nine_ring_count" = "9点数";
+"analysis_advice" = "分析アドバイス";
+"analysis_ring_unit" = "点";
+"analysis_arrow_unit" = "射";
+
+"analysis_grade_excellent" = "優秀";
+"analysis_grade_good" = "良好";
+"analysis_grade_average" = "普通";
+"analysis_grade_improve" = "改善が必要";
+"analysis_group_tightness_tight" = "高密度";
+"analysis_group_tightness_good" = "良好";
+"analysis_group_tightness_loose" = "散らばり気味";
+
+"analysis_shooting_ten_rate_excellent" = "10点率は非常に優秀です。現在の狙いのリズムを維持しましょう。";
+"analysis_shooting_ten_rate_good" = "10点率は良好です。狙いの練習を増やすことでさらに向上できます。";
+"analysis_shooting_ten_rate_improve" = "10点命中率を高めるため、基礎的な照準練習を強化しましょう。";
+"analysis_shooting_average_excellent" = "平均点が非常に高く、技術の高さが表れています。";
+"analysis_shooting_average_good" = "平均点は良好です。この調子を維持しましょう。";
+"analysis_shooting_average_improve" = "全体レベルを上げるため、基礎をさらに強化しましょう。";
+"analysis_accuracy_advice" = "現在の精度レベルは%@、グルーピング密度は%@です。散布半径は%@です。姿勢の安定と呼吸コントロールを意識して精度を高めましょう。";
+"analysis_impact_accuracy" = "着弾精度";
+"analysis_impact_scope" = "%@ 面の実際の着弾データを使用";
+"analysis_grouping_radius" = "グルーピング半径";
+"analysis_center_offset" = "中心からのずれ";
+"analysis_coordinate_hits" = "記録済み着弾";
+"analysis_bias_direction" = "偏り方向";
+"analysis_impact_no_real_data" = "可視化された着弾データはまだありません";
+"analysis_impact_no_real_data_subtitle" = "的面をタップして着弾位置を記録すると、このセクションに矢の偏り、グルーピングの密度、改善アドバイスが表示されます。";
+"analysis_coach_insights" = "コーチの所見";
+"analysis_direction_centered" = "中心付近";
+"analysis_direction_upper_left" = "左上";
+"analysis_direction_upper_right" = "右上";
+"analysis_direction_lower_left" = "左下";
+"analysis_direction_lower_right" = "右下";
+"analysis_insight_grouping_title" = "グルーピングの課題";
+"analysis_insight_adjustment_title" = "調整の課題";
+"analysis_grouping_message_excellent" = "グループはすでにかなり締まっています。細かなサイト調整と同じリズムの維持に集中しましょう。";
+"analysis_grouping_message_good" = "グループの形が整ってきています。リリース後のばらつきを減らせば次の伸びにつながります。";
+"analysis_grouping_message_improve" = "まだグループが広がりすぎています。近距離のブランクベールでエクスパンションとリリースの安定化から始めましょう。";
+"analysis_bias_message_centered" = "グループの中心はほぼブルズアイ付近にあり、現在のセットアップは安定しています。";
+"analysis_bias_message_offset" = "グループは %@ に流れています。次回は照準、弓肩の向き、リリース軌道を確認しましょう。";
+"analysis_latest_session_avg" = "直近平均";
+"analysis_recent_sessions_avg" = "直近3回平均";
+"analysis_trend_baseline_avg" = "基準平均";
+"analysis_best_session_avg" = "ベスト平均";
+"analysis_sessions_with_value" = "%lld件の記録";
+"analysis_momentum_rising" = "上昇傾向";
+"analysis_momentum_stable" = "安定傾向";
+"analysis_momentum_falling" = "下降傾向";
+"analysis_rolling_average" = "移動平均";
+"analysis_trend_insight_rising" = "直近%1$lld回の平均は、それ以前の%2$lld回の基準より%3$@高く、調子は上向きです。今の練習リズムを維持しましょう。";
+"analysis_trend_insight_stable" = "直近%1$lld回の平均は、それ以前の%2$lld回の基準と%3$@差で、全体として安定しています。動作の再現性を引き続き固めましょう。";
+"analysis_trend_insight_falling" = "直近%1$lld回の平均は、それ以前の%2$lld回の基準より%3$@低下しています。次回は配分、疲労、照準リズムを優先して確認しましょう。";
+"analysis_trend_insight_insufficient" = "現在の記録は%lld件のみです。あと1〜2件追加すると、より安定したトレンド判断ができます。";
+
+"analysis_stability_advice" = "安定性レベルは%@、変動係数は%@です。動作の標準化と継続的な練習が安定性向上に役立ちます。";
+"analysis_stability_group_excellent" = "安定性は非常に優秀で、変動係数は%@%%です。現在のリズムと技術を維持しましょう。";
+"analysis_stability_group_good" = "安定性は良好で、変動係数は%@%%です。継続的な練習でさらに向上できます。";
+"analysis_stability_group_improve" = "安定性に改善の余地があり、変動係数は%@%%です。基礎と一貫性を重点的に見直しましょう。";
+"analysis_stability_training_excellent" = "現在の練習量と技術を維持しつつ、徐々に難度を上げても大丈夫です。";
+"analysis_stability_training_good" = "反復練習を増やし、フォームと再現性への意識を高めましょう。";
+"analysis_stability_training_average" = "特にスタンス、照準、リリースの一貫性など基礎の補強が必要です。";
+"analysis_stability_training_improve" = "基本動作から組み直し、正しい射技を段階的に構築しましょう。必要なら専門指導も有効です。";
+
+"analysis_fatigue_excellent" = "疲労管理が非常に良く、射の途中でも良好な身体状態を維持できています。";
+"analysis_fatigue_good" = "軽い疲労の兆候があります。練習強度の調整を検討しましょう。";
+"analysis_fatigue_average" = "疲労がやや目立っています。体力強化と回復を増やしましょう。";
+"analysis_fatigue_improve" = "疲労が強めです。次の練習前に十分な休養を取ってください。";
+"analysis_fatigue_training_excellent" = "疲労コントロールは良好です。現在の練習と休養のバランスを維持しましょう。";
+"analysis_fatigue_training_good" = "軽い疲労が見られます。強度を少し下げ、休息を増やしましょう。";
+"analysis_fatigue_training_average" = "疲労がパフォーマンスに影響しています。強度を落とし、体力向上にも取り組みましょう。";
+"analysis_fatigue_training_improve" = "疲労が強い状態です。まず休養を優先し、その後で練習計画を見直しましょう。";
+
+"analysis_comprehensive_score" = "総合スコア";
+"analysis_total_arrows_with_value" = "総射数: %lld";
+"analysis_total_score_with_value" = "合計点: %lld";
+"analysis_core_metrics" = "主要指標";
+"analysis_ring_breakdown" = "点数内訳";
+"analysis_ring_label" = "%@点";
+"analysis_comprehensive_evaluation" = "総合評価";
+"analysis_comprehensive_eval_average_excellent" = "平均点は非常に優秀で、高い精度が表れています。";
+"analysis_comprehensive_eval_average_good" = "平均点は良好で、まだ伸ばせる余地があります。";
+"analysis_comprehensive_eval_average_improve" = "平均点に改善の余地があります。射の精度向上に集中しましょう。";
+"analysis_comprehensive_eval_stability_excellent" = "安定性は非常に高く、スコアのばらつきも小さいです。";
+"analysis_comprehensive_eval_stability_good" = "安定性は中程度です。再現性を高める練習がおすすめです。";
+"analysis_comprehensive_eval_stability_improve" = "安定性に改善が必要です。毎射の再現性を高めることに集中しましょう。";
+"analysis_comprehensive_eval_fatigue_excellent" = "疲労をうまくコントロールできており、高いパフォーマンスを維持できます。";
+"analysis_comprehensive_eval_fatigue_good" = "軽い疲労が見られます。必要に応じて練習強度を調整しましょう。";
+"analysis_comprehensive_eval_fatigue_improve" = "疲労がパフォーマンスに影響しています。体力強化と回復調整を行いましょう。";
+
+"analysis_stability_assessment" = "安定性評価";
+"analysis_stability_score" = "安定性スコア";
+"analysis_stability_grade" = "安定性レベル";
+"analysis_coefficient_variation" = "変動係数";
+"analysis_control_chart" = "管理図";
+"analysis_index" = "番号";
+"analysis_control_upper" = "上方管理限界";
+"analysis_control_lower" = "下方管理限界";
+"analysis_average_line" = "平均線";
+"analysis_stability_metrics" = "安定性指標";
+"analysis_control_range" = "管理範囲";
+"analysis_cv_level" = "CVレベル";
+
+"analysis_fatigue_assessment" = "疲労評価";
+"analysis_fatigue_index" = "疲労指数";
+"analysis_fatigue_grade" = "疲労レベル";
+"analysis_first_half_average" = "前半平均";
+"analysis_second_half_average" = "後半平均";
+"analysis_score_trend" = "スコア推移";
+"analysis_arrow_count_axis" = "射数";
+"analysis_fatigue_metrics" = "疲労指標";
+"analysis_score_drop" = "スコア低下";
+"analysis_drop_rate" = "低下率";
+"analysis_training_advice" = "トレーニングアドバイス";
+"analysis_empty_prompt" = "まだデータがありません。記録を始めて分析を表示しましょう。";
+"common_remove" = "削除";
+"input_mode_keyboard" = "キーボード";
+"input_mode_visual_target" = "的面";
+"completion_summary_title" = "結果まとめ";
+"completion_average_ring" = "平均得点";
+"completion_highlight_hits" = "10/X ヒット";
+"completion_best_arrow" = "最高の1射";
+"completion_bow_type" = "弓種";
+"completion_single_eyebrow" = "1エンド完了";
+"completion_group_eyebrow" = "試合完了";
+"completion_single_review_title" = "各射の振り返り";
+"completion_single_review_caption" = "記録した順番で各射を確認できます。";
+"completion_group_review_title" = "各エンドの振り返り";
+"completion_group_review_caption" = "各エンドの得点と小計をすばやく確認できます。";
+"completion_single_again" = "もう1エンド";
+"completion_group_again" = "もう1試合";
+"completion_single_result_title" = "1エンド結果";
+"completion_group_result_title" = "試合結果";
+"completion_stability" = "安定性";
+"completion_best_group" = "ベストエンド";
+"completion_best_in_session" = "この試合のベスト";
+"completion_ring_unit" = "点";
+"completion_arrow_unit" = "射";
+"completion_point_unit" = "pt";
+"completion_single_subtitle" = "%d射 ・ 平均 %.1f";
+"completion_group_subtitle" = "%dエンド ・ %d射 ・ 平均 %.1f";
+"completion_single_summary_high" = "このエンドはリズムが安定していて、高得点のヒットが継続して出せています。";
+"completion_single_summary_mid" = "全体の感触は良好です。狙いとリリースのタイミングをもう少しそろえると、高得点帯に残りやすくなります。";
+"completion_single_summary_low" = "このエンドはしっかり記録できました。次はリズムとフォロースルーの安定を意識してみてください。";
+"completion_group_summary_high" = "試合全体を通して出力が整っており、安定性が最後まで維持できています。";
+"completion_group_summary_mid" = "この試合は全体的に内容が良好でした。後半の集中を守れれば、合計点はさらに伸ばしやすくなります。";
+"completion_group_summary_low" = "1試合を最後まで打ち切ったこと自体に価値があります。この記録で各エンドの波や疲労の変化を振り返れます。";
+"completion_arrow_label" = "%d射目";
+"completion_group_label" = "第%dエンド";
+"completion_group_score" = "%d点";
+"group_input_preset_section_title" = "試合プリセット";
+"group_input_preset_indoor_18m" = "インドア18m（10エンド / 3射）";
+"group_input_preset_outdoor_70m" = "アウトドア70m（12エンド / 6射）";
+"group_input_preset_indoor_25m" = "インドア25m（12エンド / 3射）";
+"group_input_custom_section_title" = "カスタム設定";
+"group_input_number_of_groups_value" = "%dエンド";
+"group_input_arrows_per_group_value" = "%d射";
+"group_input_total_arrows" = "合計: %d射";
+"group_input_match_settings_title" = "試合形式の設定";
+"group_input_remove_score" = "スコアを削除";
+"group_input_complete_score" = "スコアを確定";
+"analysis_phase_conclusion" = "結論";
+"analysis_phase_chart" = "チャート";
+"analysis_phase_action" = "次の行動";
+"analysis_accuracy_conclusion_title" = "精度のまとめ";
+"analysis_accuracy_conclusion_detail" = "まずは現在の命中品質とグルーピング全体を確認します。";
+"analysis_impact_distribution_title" = "着点分布";
+"analysis_impact_distribution_detail" = "的面上の分布から偏り方向と散らばり幅を確認します。";
+"analysis_accuracy_advice_title" = "修正アドバイス";
+"analysis_accuracy_advice_detail" = "結論を次の練習で実行できる動きに変えます。";
+"analysis_stability_conclusion_title" = "安定性のまとめ";
+"analysis_stability_conclusion_detail" = "まず変動の大きさを確認し、その後にデータが管理範囲内かを見ます。";
+"analysis_stability_chart_title" = "変動コントロール図";
+"analysis_stability_chart_detail" = "推移、平均、管理線から各射の変動が安定しているかを判断します。";
+"analysis_stability_advice_title" = "安定性アドバイス";
+"analysis_stability_advice_detail" = "安定した出力を最も妨げる練習要素から優先して整えます。";
+"analysis_fatigue_conclusion_title" = "疲労のまとめ";
+"analysis_fatigue_conclusion_detail" = "前半と後半の差から、体力がパフォーマンスに与える影響を判断します。";
+"analysis_fatigue_trend_title" = "体力トレンド";
+"analysis_fatigue_trend_detail" = "射順の推移と前半・後半の平均値を比較します。";
+"analysis_fatigue_advice_title" = "回復アドバイス";
+"analysis_fatigue_advice_detail" = "疲労の判断を回復リズムと練習計画に落とし込みます。";
+"analysis_comprehensive_conclusion_title" = "総合まとめ";
+"analysis_core_metrics_title" = "主要指標";
+"analysis_core_metrics_detail" = "4つの主要指標で現在の総合判断を素早く支えます。";
+"analysis_ring_structure_title" = "命中構成";
+"analysis_ring_structure_detail" = "得点分布から、得点源と失点の集中箇所を確認します。";
+"analysis_training_advice_title" = "練習アドバイス";
+"analysis_training_advice_detail" = "総合判断を、次に優先すべき方向へ絞り込みます。";

@@ -30,75 +30,79 @@ struct TargetFaceView: View {
     }
     
     var body: some View {
-        ZStack {
-            // 靶面背景
-            Circle()
-                .fill(Color.gray.opacity(0.1))
-                .frame(width: size.width, height: size.height)
-            
-            // 绘制靶环
-            ForEach(targetFace.rings.sorted(by: { $0.outerRadius > $1.outerRadius }), id: \.ringNumber) { ring in
-                TargetRingView(
-                    ring: ring,
+        let metrics = targetFace.layoutMetrics(in: size)
+        
+        return ZStack {
+            ForEach(Array(metrics.spotCentersCm.enumerated()), id: \.offset) { index, spotCenter in
+                TargetSpotView(
                     targetFace: targetFace,
-                    containerSize: size,
-                    showLabel: showLabels,
-                    interactive: interactive,
-                    onTapped: {
-                        onRingTapped?(ring.ringNumber)
-                    }
+                    metrics: metrics,
+                    spotCenterCm: spotCenter,
+                    showLabel: showLabels && metrics.spotCentersCm.count == 1 && index == 0
                 )
             }
-            
-            // 中心点
-            Circle()
-                .fill(Color.black)
-                .frame(width: 4, height: 4)
         }
         .frame(width: size.width, height: size.height)
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onEnded { value in
+                    guard interactive else { return }
+                    let pointCm = metrics.pointInCentimeters(from: value.location)
+                    let hit = targetFace.resolveHit(at: pointCm)
+                    onRingTapped?(hit.ringNumber)
+                }
+        )
     }
 }
 
-// MARK: - 靶环视图
-struct TargetRingView: View {
-    let ring: TargetRing
+private struct TargetSpotView: View {
     let targetFace: TargetFace
-    let containerSize: CGSize
+    let metrics: TargetLayoutMetrics
+    let spotCenterCm: CGPoint
     let showLabel: Bool
-    let interactive: Bool
-    let onTapped: () -> Void
-    
-    private var ringRadius: Double {
-        let maxRadius = containerSize.width / 2
-        return (ring.outerRadius / (targetFace.diameter / 2)) * maxRadius
-    }
-    
-    private var ringColor: Color {
-        return targetFace.getRingColor(for: ring.ringNumber)
-    }
     
     var body: some View {
-        Button(action: interactive ? onTapped : {}) {
-            ZStack {
-                // 靶环圆圈
+        let spotCenter = metrics.pointInView(from: spotCenterCm)
+        
+        return ZStack {
+            ForEach(targetFace.rings.sorted(by: { $0.outerRadius > $1.outerRadius }), id: \.ringNumber) { ring in
                 Circle()
-                    .fill(ringColor)
-                    .frame(width: ringRadius * 2, height: ringRadius * 2)
+                    .fill(targetFace.getRingColor(for: ring.ringNumber))
+                    .frame(
+                        width: CGFloat(ring.outerRadius * 2) * metrics.scale,
+                        height: CGFloat(ring.outerRadius * 2) * metrics.scale
+                    )
                     .overlay(
                         Circle()
-                            .stroke(Color.black, lineWidth: 1)
+                            .stroke(Color.black.opacity(0.18), lineWidth: 1)
                     )
-                
-                // 分数标签
-                if showLabel {
-                    Text(ring.displayScore)
-                        .font(.system(size: min(ringRadius * 0.3, 16), weight: .bold))
-                        .foregroundColor(ringColor == .white || ringColor == .yellow ? .black : .white)
+                    .position(spotCenter)
+            }
+            
+            Circle()
+                .fill(Color.black.opacity(0.3))
+                .frame(width: metrics.centerDotSize, height: metrics.centerDotSize)
+                .position(spotCenter)
+            
+            if showLabel {
+                VStack(spacing: 4) {
+                    ForEach(targetFace.rings.sorted(by: { $0.ringNumber > $1.ringNumber }), id: \.ringNumber) { ring in
+                        Text(ring.displayScore)
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundColor(ring.color == "white" ? .black : .white)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(targetFace.getRingColor(for: ring.ringNumber))
+                            .clipShape(Capsule())
+                    }
                 }
+                .position(
+                    x: min(spotCenter.x + CGFloat(targetFace.diameter / 2) * metrics.scale + 18, metrics.containerSize.width - 14),
+                    y: spotCenter.y
+                )
             }
         }
-        .disabled(!interactive)
-        .buttonStyle(PlainButtonStyle())
     }
 }
 
@@ -128,7 +132,7 @@ struct TargetFaceSelector: View {
                     Text("靶面类型")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Text(selectedTargetType)
+                    Text(TargetTypeDisplay.primaryTitle(for: selectedTargetType))
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.primary)
                 }
@@ -224,9 +228,15 @@ struct TargetFaceCard: View {
                 
                 // 靶面信息
                 VStack(spacing: 4) {
-                    Text(targetFace.type.rawValue)
+                    Text(TargetTypeDisplay.primaryTitle(for: targetFace.type.rawValue))
                         .font(.headline)
                         .foregroundColor(.primary)
+
+                    if let subtitle = TargetTypeDisplay.subtitle(for: targetFace.type.rawValue) {
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                     
                     Text(targetFace.description)
                         .font(.caption)

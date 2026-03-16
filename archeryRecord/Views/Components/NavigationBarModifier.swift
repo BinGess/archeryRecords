@@ -13,8 +13,8 @@ struct NavigationBarModifier: ViewModifier {
         leadingButton: (() -> Void)? = nil,
         trailingButton: (() -> Void)? = nil,
         trailingTitle: String? = nil,
-        backgroundColor: Color = .blue,
-        foregroundColor: Color = .white
+        backgroundColor: Color = SharedStyles.backgroundColor,
+        foregroundColor: Color = SharedStyles.primaryTextColor
     ) {
         self.title = title
         self.leadingButton = leadingButton
@@ -38,14 +38,14 @@ struct NavigationBarModifier: ViewModifier {
                                 Text(L10n.Common.back)
                             }
                             .foregroundColor(foregroundColor)
-                            .padding(.leading, 0)
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
                         }
                     }
                 }
                 
                 ToolbarItem(placement: .principal) {
                     Text(title)
-                        .font(.headline)
+                        .font(SharedStyles.Text.title)
                         .foregroundColor(foregroundColor)
                 }
                 
@@ -55,6 +55,7 @@ struct NavigationBarModifier: ViewModifier {
                             Button(action: action) {
                                 Text(title)
                                     .foregroundColor(foregroundColor)
+                                    .font(.system(size: 14, weight: .bold, design: .rounded))
                             }
                         } else {
                             Button(action: action) {
@@ -79,13 +80,14 @@ struct NavigationBarModifier: ViewModifier {
                                 Text(L10n.Common.back)
                             }
                             .foregroundColor(foregroundColor)
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
                         }
                     }
                 }
                 
                 ToolbarItem(placement: .principal) {
                     Text(title)
-                        .font(.headline)
+                        .font(SharedStyles.Text.title)
                         .foregroundColor(foregroundColor)
                 }
                 
@@ -95,6 +97,7 @@ struct NavigationBarModifier: ViewModifier {
                             Button(action: action) {
                                 Text(title)
                                     .foregroundColor(foregroundColor)
+                                    .font(.system(size: 14, weight: .bold, design: .rounded))
                             }
                         } else {
                             Button(action: action) {
@@ -115,8 +118,8 @@ extension View {
         leadingButton: (() -> Void)? = nil,
         trailingButton: (() -> Void)? = nil,
         trailingTitle: String? = nil,
-        backgroundColor: Color = .blue,
-        foregroundColor: Color = .white
+        backgroundColor: Color = SharedStyles.backgroundColor,
+        foregroundColor: Color = SharedStyles.primaryTextColor
     ) -> some View {
         self.modifier(NavigationBarModifier(
             title: title,

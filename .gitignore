@@ -63,3 +63,4 @@ Carthage/Build
 # Misc
 .DS_Store
 .vscode/
+archeryRecord/Configuration/CozeSecrets.plist

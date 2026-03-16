@@ -7,11 +7,11 @@ struct GroupScoreSectionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("第\(groupIndex + 1)组")
+                Text(L10n.Completion.groupLabel(groupIndex + 1))
                     .font(SharedStyles.Text.subtitle)
                     .foregroundColor(SharedStyles.secondaryColor)
                 Spacer()
-                Text("得分：\(scores.calculateScore())")
+                Text(L10n.GroupDetail.groupScore(scores.calculateScore()))
                     .font(SharedStyles.Text.body)
                     .foregroundColor(SharedStyles.primaryColor)
             }

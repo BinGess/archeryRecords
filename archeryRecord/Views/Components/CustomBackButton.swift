@@ -9,8 +9,8 @@ struct CustomBackButton: View {
                 Image(systemName: "chevron.left")
                 Text(L10n.Common.back)
             }
-            .foregroundColor(.white)
-            .padding(.leading, 8)  // 统一的左边距
+            .foregroundColor(SharedStyles.primaryTextColor)
+            .font(.system(size: 14, weight: .bold, design: .rounded))
         }
     }
 } 

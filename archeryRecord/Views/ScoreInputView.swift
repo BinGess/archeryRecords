@@ -6,8 +6,9 @@ import Foundation
 
 struct ScoreInputView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.revealAppTabBar) private var revealAppTabBar
     @EnvironmentObject private var archeryStore: ArcheryStore
-    @EnvironmentObject private var tabBarManager: TabBarManager
+    @EnvironmentObject private var purchaseManager: PurchaseManager
     
     // 编辑模式相关
     private let editingRecord: ArcheryRecord?
@@ -22,6 +23,13 @@ struct ScoreInputView: View {
         _selectedBowType = State(initialValue: L10n.Options.BowType.recurve)
         _selectedDistance = State(initialValue: L10n.Options.Distance.d18m)
         _selectedTarget = State(initialValue: L10n.Options.TargetType.t122cmStandard)
+    }
+
+    init(prefillBowType bowType: String, distance: String, targetType: String) {
+        self.editingRecord = nil
+        _selectedBowType = State(initialValue: bowType)
+        _selectedDistance = State(initialValue: distance)
+        _selectedTarget = State(initialValue: targetType)
     }
     
     init(editingRecord: ArcheryRecord) {
@@ -46,6 +54,8 @@ struct ScoreInputView: View {
     @State private var selectedScoreIndex = 0
     @State private var inputMode: InputMode = .keyboard
     @State private var arrowHits: [ArrowHit] = []
+    @State private var completedRecord: ArcheryRecord?
+    @State private var activePaywallFeature: ProFeature?
     
     enum InputMode {
         case keyboard
@@ -87,54 +97,50 @@ struct ScoreInputView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text("记一组")
-                    .font(.headline)
-                    .foregroundColor(.black)
+                Text(L10n.Nav.record)
+                    .font(SharedStyles.Text.title)
+                    .foregroundColor(SharedStyles.primaryTextColor)
             }
             ToolbarItem(placement: .navigationBarLeading) {
                 Button(action: {
-                    withAnimation(.easeInOut(duration: 0.1)) {
-                        tabBarManager.show()
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                        dismiss()
-                    }
-                }) {
-                    HStack {
-                        Image(systemName: "chevron.left")
-                        Text(L10n.Common.back)
-                    }
-                    .foregroundColor(.black)
-                }
-            }
-        }
-        #if os(iOS)
-        .toolbarBackground(.visible, for: .navigationBar)
-        .toolbar(.hidden, for: .tabBar)
-        #endif
-        #else
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text("记一组")
-                    .font(.headline)
-                    .foregroundColor(.black)
-            }
-            ToolbarItem(placement: .automatic) {
-                Button(action: {
+                    revealAppTabBar?()
                     dismiss()
                 }) {
                     HStack {
                         Image(systemName: "chevron.left")
                         Text(L10n.Common.back)
                     }
-                    .foregroundColor(.black)
+                    .foregroundColor(SharedStyles.primaryTextColor)
+                }
+            }
+        }
+        #if os(iOS)
+        .toolbarBackground(SharedStyles.backgroundColor, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
+        #endif
+        #else
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(L10n.Nav.record)
+                    .font(SharedStyles.Text.title)
+                    .foregroundColor(SharedStyles.primaryTextColor)
+            }
+            ToolbarItem(placement: .automatic) {
+                Button(action: {
+                    revealAppTabBar?()
+                    dismiss()
+                }) {
+                    HStack {
+                        Image(systemName: "chevron.left")
+                        Text(L10n.Common.back)
+                    }
+                    .foregroundColor(SharedStyles.primaryTextColor)
                 }
             }
         }
         #endif
-        .onAppear {
-            tabBarManager.hide()
-        }
+        .hiddenAppTabBar()
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .bowType:
@@ -160,6 +166,19 @@ struct ScoreInputView: View {
                 )
             }
         }
+        .sheet(item: $activePaywallFeature) { feature in
+            ProPaywallView {
+                inputMode = .visualTarget
+            }
+            .environmentObject(purchaseManager)
+        }
+        .navigationDestination(item: $completedRecord) { record in
+            SingleRecordCompletionView(
+                record: record,
+                onDone: closeInputFlow
+            )
+            .environmentObject(archeryStore)
+        }
     }
     
     private var mainContentView: some View {
@@ -170,39 +189,16 @@ struct ScoreInputView: View {
             }
             .padding(.vertical, 16)
         }
-        #if canImport(UIKit)
-        .background(Color(UIColor.systemGroupedBackground))
-        #else
-        .background(Color.gray.opacity(0.1))
-        #endif
+        .vibrantCanvasBackground()
     }
     
     private var basicOptionsCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("基本选项")
-                    .font(.headline)
+                Text(L10n.SingleInput.basicOptions)
+                    .font(SharedStyles.Text.title)
                 Spacer()
-                
-                // 输入模式切换开关
-                HStack(spacing: 8) {
-                    Image(systemName: inputMode == .keyboard ? "keyboard" : "target")
-                        .font(.system(size: 14))
-                        .foregroundColor(.orange)
-                    
-                    Toggle("", isOn: Binding(
-                        get: { inputMode == .visualTarget },
-                        set: { newValue in
-                            inputMode = newValue ? .visualTarget : .keyboard
-                        }
-                    ))
-                    .toggleStyle(SwitchToggleStyle(tint: .orange))
-                    .scaleEffect(0.8)
-                    
-                    Text(inputMode == .visualTarget ? "靶面" : "键盘")
-                        .font(.system(size: 12))
-                        .foregroundColor(.gray)
-                }
+                inputModeToggle
             }
             .padding(.horizontal, 16)
             .padding(.top, 16)
@@ -212,17 +208,15 @@ struct ScoreInputView: View {
                 bowTypeButton
                 Divider()
                     .frame(width: 1, height: 40)
-                    .background(Color.gray.opacity(0.2))
+                    .background(SharedStyles.tertiaryTextColor.opacity(0.18))
                 distanceButton
                 Divider()
                     .frame(width: 1, height: 40)
-                    .background(Color.gray.opacity(0.2))
+                    .background(SharedStyles.tertiaryTextColor.opacity(0.18))
                 targetButton
             }
         }
-        .background(Color.white)
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+        .clayCard(tint: SharedStyles.primaryColor)
         .padding(.horizontal, 16)
     }
     
@@ -231,10 +225,10 @@ struct ScoreInputView: View {
             VStack(spacing: 8) {
                 Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
                     .font(.system(size: 24))
-                    .foregroundColor(.orange)
+                    .foregroundColor(SharedStyles.primaryColor)
                 Text(selectedBowType)
-                    .font(.system(size: 14))
-                    .foregroundColor(.black)
+                    .font(SharedStyles.Text.caption)
+                    .foregroundColor(SharedStyles.primaryTextColor)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
@@ -246,10 +240,10 @@ struct ScoreInputView: View {
             VStack(spacing: 8) {
                 Image(systemName: "triangle")
                     .font(.system(size: 24))
-                    .foregroundColor(.orange)
+                    .foregroundColor(SharedStyles.primaryColor)
                 Text(selectedDistance)
-                    .font(.system(size: 14))
-                    .foregroundColor(.black)
+                    .font(SharedStyles.Text.caption)
+                    .foregroundColor(SharedStyles.primaryTextColor)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
@@ -261,10 +255,10 @@ struct ScoreInputView: View {
             VStack(spacing: 8) {
                 Image(systemName: "square.grid.3x3")
                     .font(.system(size: 24))
-                    .foregroundColor(.orange)
-                Text(selectedTarget)
-                    .font(.system(size: 14))
-                    .foregroundColor(.black)
+                    .foregroundColor(SharedStyles.primaryColor)
+                Text(TargetTypeDisplay.primaryTitle(for: selectedTarget))
+                    .font(SharedStyles.Text.caption)
+                    .foregroundColor(SharedStyles.primaryTextColor)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
@@ -282,21 +276,19 @@ struct ScoreInputView: View {
                 visualTargetInputView
             }
         }
-        .background(Color.white)
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+        .clayCard(tint: SharedStyles.Accent.sky)
         .padding(.horizontal, 16)
     }
     
     private var scoreInputHeader: some View {
         HStack {
-            Text("成绩录入")
-                .font(.headline)
+            Text(L10n.SingleInput.scoreInput)
+                .font(SharedStyles.Text.title)
             Spacer()
             
-            Text("总分：\(totalScore)")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.orange)
+            Text(L10n.SingleInput.totalScore(totalScore))
+                .font(SharedStyles.Text.caption)
+                .foregroundColor(SharedStyles.primaryColor)
         }
         .padding(.horizontal, 16)
         .padding(.top, 16)
@@ -314,17 +306,17 @@ struct ScoreInputView: View {
                 } label: {
                     ZStack {
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(selectedScoreIndex == index ? Color.orange.opacity(0.1) : Color.gray.opacity(0.05))
+                            .fill(selectedScoreIndex == index ? SharedStyles.primaryColor.opacity(0.16) : Color.white.opacity(0.48))
                             .frame(height: 50)
                         
                         if scores[index].isEmpty {
                             Text("\(index + 1).")
-                                .font(.system(size: 16))
-                                .foregroundColor(.gray.opacity(0.5))
+                                .font(SharedStyles.Text.body)
+                                .foregroundColor(SharedStyles.tertiaryTextColor)
                         } else {
-                            Text(scores[index])
-                                .font(.system(size: 20, weight: .medium))
-                                .foregroundColor(.black)
+                            Text(scoreLabel(at: index))
+                                .font(SharedStyles.Text.title)
+                                .foregroundColor(SharedStyles.primaryTextColor)
                         }
                     }
                 }
@@ -335,11 +327,10 @@ struct ScoreInputView: View {
     
     private var visualTargetInputView: some View {
         VStack(spacing: 16) {
-            // 靶面视图
             if let targetFace = TargetFaceManager.shared.getTarget(for: getTargetFaceType(from: selectedTarget)) {
                 InteractiveTargetView(
                     targetFace: targetFace,
-                    size: CGSize(width: 280, height: 280),
+                    size: CGSize(width: 300, height: 300),
                     arrowHits: $arrowHits,
                     currentGroup: 1,
                     currentArrowIndex: selectedScoreIndex,
@@ -347,34 +338,122 @@ struct ScoreInputView: View {
                         handleVisualTargetInput(arrowHit)
                     }
                 )
+                .padding(.vertical, 8)
             }
             
-            // 移除和完成按钮
-            HStack(spacing: 16) {
-                Button(action: handleScoreDelete) {
-                    Text("移除成绩")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.red)
-                        .cornerRadius(8)
-                }
-                
-                Button(action: saveRecord) {
-                    Text("完成成绩记录")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.orange)
-                        .cornerRadius(8)
-                }
-            }
-            .padding(.horizontal, 16)
+            targetActionBar
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 16)
+    }
+    
+    private var inputModeToggle: some View {
+        HStack(spacing: 4) {
+            inputModeButton(
+                title: L10n.CommonAction.visualTarget,
+                systemImage: "target",
+                isActive: inputMode == .visualTarget,
+                showsProBadge: !purchaseManager.isProUnlocked
+            ) {
+                activateVisualTargetInput()
+            }
+            
+            inputModeButton(
+                title: L10n.CommonAction.keyboard,
+                systemImage: "keyboard",
+                isActive: inputMode == .keyboard,
+                showsProBadge: false
+            ) {
+                inputMode = .keyboard
+            }
+        }
+        .padding(4)
+        .background(TargetInputPalette.track)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.white.opacity(0.65), lineWidth: 1)
+        )
+    }
+    
+    private func inputModeButton(
+        title: String,
+        systemImage: String,
+        isActive: Bool,
+        showsProBadge: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 12, weight: .semibold))
+                Text(title)
+                    .font(.system(size: 12, weight: .bold))
+                    .lineLimit(1)
+
+                if showsProBadge {
+                    Image(systemName: "crown.fill")
+                        .font(.system(size: 9, weight: .black))
+                        .foregroundStyle(Color(red: 0.92, green: 0.72, blue: 0.12))
+                }
+            }
+            .foregroundColor(isActive ? TargetInputPalette.primary : .secondary)
+            .frame(minWidth: showsProBadge ? 82 : 70)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(isActive ? SharedStyles.elevatedSurfaceColor : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 9))
+            .shadow(color: isActive ? SharedStyles.Shadow.light : .clear, radius: 6, x: 0, y: 2)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func activateVisualTargetInput() {
+        guard purchaseManager.isProUnlocked else {
+            activePaywallFeature = .visualTargetInput
+            return
+        }
+
+        inputMode = .visualTarget
+    }
+    
+    private var targetActionBar: some View {
+        HStack(spacing: 16) {
+            targetActionButton(
+                title: L10n.CommonAction.remove,
+                systemImage: "xmark",
+                foreground: TargetInputPalette.mutedText,
+                background: TargetInputPalette.track,
+                action: handleScoreDelete
+            )
+            
+            targetActionButton(
+                title: L10n.Common.save,
+                systemImage: "square.and.arrow.down",
+                foreground: .white,
+                background: TargetInputPalette.primary,
+                action: saveRecord
+            )
+        }
+    }
+    
+    private func targetActionButton(title: String, systemImage: String, foreground: Color, background: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 14, weight: .bold))
+                Text(title)
+                    .font(.system(size: 14, weight: .bold))
+            }
+            .foregroundColor(foreground)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(background)
+            )
+        }
+        .buttonStyle(.plain)
     }
     
     private var bottomKeyboardView: some View {
@@ -405,34 +484,31 @@ struct ScoreInputView: View {
             
             VStack(spacing: 6) {
                 Button(action: handleScoreDelete) {
-                    Text("移除")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.gray)
+                    Text(L10n.CommonAction.remove)
+                        .font(SharedStyles.Text.bodyEmphasis)
+                        .foregroundColor(SharedStyles.secondaryTextColor)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .frame(width: 68, height: 72)
-                .background(Color.white)
-                .cornerRadius(8)
+                .clayCard(tint: SharedStyles.Accent.sky, radius: 16)
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.orange, lineWidth: 1)
+                        .stroke(SharedStyles.primaryColor.opacity(0.55), lineWidth: 1)
                 )
                 
                 Button(action: saveRecord) {
-                    Text("保存")
-                        .font(.system(size: 16, weight: .medium))
+                    Text(L10n.Common.save)
+                        .font(SharedStyles.Text.bodyEmphasis)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .frame(width: 68, height: 72)
-                .background(Color.orange)
-                .cornerRadius(8)
+                .blockSurface(colors: SharedStyles.GradientSet.sunrise, radius: 16)
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 12)
-        .background(Color.white)
-        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: -3)
+        .clayCard(tint: SharedStyles.primaryColor, radius: 24)
     }
     
     private func handleScoreInput(_ score: String) {
@@ -462,16 +538,32 @@ struct ScoreInputView: View {
     }
     
     private func handleVisualTargetInput(_ arrowHit: ArrowHit) {
-        // 将箭着点转换为分数
-        let score = String(arrowHit.score)
-        handleScoreInput(score)
+        let currentIndex = selectedScoreIndex
+        let score = arrowHit.scoreLabel
         
-        // 更新箭着点数组
-        if selectedScoreIndex < arrowHits.count {
-            arrowHits[selectedScoreIndex] = arrowHit
+        scores[currentIndex] = score
+        
+        if currentIndex < arrowHits.count {
+            arrowHits[currentIndex] = arrowHit
         } else {
             arrowHits.append(arrowHit)
         }
+        
+        if currentIndex < 5 {
+            selectedScoreIndex = currentIndex + 1
+        }
+    }
+    
+    private func scoreLabel(at index: Int) -> String {
+        guard scores.indices.contains(index), !scores[index].isEmpty else {
+            return ""
+        }
+        
+        if arrowHits.indices.contains(index) {
+            return arrowHits[index].scoreLabel
+        }
+        
+        return scores[index]
     }
     
     private func getTargetFaceType(from targetString: String) -> TargetFaceType {
@@ -510,6 +602,7 @@ struct ScoreInputView: View {
             
             // 更新记录
             archeryStore.updateRecord(updatedRecord)
+            closeInputFlow()
         } else {
             // 新建模式：创建新记录
             let record = ArcheryRecord(
@@ -523,15 +616,28 @@ struct ScoreInputView: View {
             )
             
             archeryStore.addRecord(record)
-        }
-        
-        withAnimation(.easeInOut(duration: 0.1)) {
-            tabBarManager.show()
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            dismiss()
+            completedRecord = record
         }
     }
+
+    private func closeInputFlow() {
+        completedRecord = nil
+        revealAppTabBar?()
+        dismiss()
+    }
+}
+
+private enum TargetInputPalette {
+    static let primary = SharedStyles.Accent.teal
+    static let track = Color.white.opacity(0.52)
+    static let border = SharedStyles.tertiaryTextColor.opacity(0.18)
+    static let text = SharedStyles.primaryTextColor
+    static let mutedText = SharedStyles.secondaryTextColor
+    static let paper = SharedStyles.elevatedSurfaceColor
+    static let gold = SharedStyles.Accent.lemon
+    static let red = SharedStyles.Accent.coral
+    static let blue = SharedStyles.Accent.sky
+    static let black = SharedStyles.primaryTextColor
 }
 
 struct CircleScoreButton: View {
@@ -552,18 +658,23 @@ struct CircleScoreButton: View {
     var body: some View {
         Button(action: onTap) {
             Text(score)
-                .font(.system(size: 18, weight: .medium))
-                .foregroundColor(isSpecial ? .white : .black)
+                .font(SharedStyles.Text.bodyEmphasis)
+                .foregroundColor(isSpecial ? .white : SharedStyles.primaryTextColor)
         }
         .frame(maxWidth: .infinity, minHeight: 48)
         .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isSpecial ? Color.red : Color.white)
+            RoundedRectangle(cornerRadius: 12)
+                .fill(isSpecial ? SharedStyles.Accent.coral : SharedStyles.elevatedSurfaceColor)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(isSpecial ? Color.red : (isHighScore ? Color.orange : Color.black), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(
+                    isSpecial ? SharedStyles.Accent.coral : (isHighScore ? SharedStyles.primaryColor : SharedStyles.primaryTextColor.opacity(0.28)),
+                    lineWidth: 1
+                )
         )
+        .shadow(color: SharedStyles.Shadow.highlight, radius: 8, x: -3, y: -3)
+        .shadow(color: SharedStyles.Shadow.light, radius: 10, x: 5, y: 6)
     }
 }
 
@@ -571,6 +682,7 @@ struct CircleScoreButton: View {
     NavigationStack {
         ScoreInputView()
             .environmentObject(ArcheryStore())
+            .environmentObject(PurchaseManager())
             .environmentObject(TabBarManager())
     }
 }

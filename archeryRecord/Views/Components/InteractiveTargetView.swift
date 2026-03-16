@@ -37,57 +37,54 @@ struct InteractiveTargetView: View {
     }
     
     var body: some View {
-        ZStack {
-            // 靶面背景
-            Circle()
-                .fill(Color.gray.opacity(0.1))
-                .frame(width: size.width, height: size.height)
-            
-            // 绘制靶环（从外到内）
-            ForEach(targetFace.rings.sorted(by: { $0.outerRadius > $1.outerRadius }), id: \.ringNumber) { ring in
-                InteractiveTargetRingView(
-                    ring: ring,
+        let metrics = targetFace.layoutMetrics(in: size)
+        
+        return ZStack {
+            ForEach(metrics.spotCentersCm.indices, id: \.self) { index in
+                InteractiveTargetSpotView(
                     targetFace: targetFace,
-                    containerSize: size,
-                    onTapped: { position in
-                        handleTargetTap(at: position)
-                    }
+                    metrics: metrics,
+                    spotCenterCm: metrics.spotCentersCm[index]
                 )
             }
             
-            // 显示已有的箭着点
-            ForEach(arrowHits.indices, id: \.self) { index in
-                let hit = arrowHits[index]
-                ArrowHitMarker(
-                    hit: hit,
-                    containerSize: size,
-                    targetFace: targetFace,
-                    index: index + 1
-                )
-            }
-            
-            // 显示建议的偏移位置
-            if let offset = suggestedOffset {
-                let maxRadius = size.width / 2
-                let targetRadius = targetFace.diameter / 2
-                let scaleFactor = maxRadius / targetRadius
-                
-                Circle()
-                    .fill(Color.orange.opacity(0.5))
-                    .frame(width: 12, height: 12)
-                    .position(
-                        x: size.width/2 + offset.x * scaleFactor,
-                        y: size.height/2 + offset.y * scaleFactor
+            ForEach(Array(arrowHits.enumerated()), id: \.element.id) { index, hit in
+                if hit.ringNumber > 0 {
+                    ArrowHitMarker(
+                        hit: hit,
+                        metrics: metrics,
+                        index: index + 1
                     )
-                    .animation(.easeInOut(duration: 0.3), value: suggestedOffset)
+                }
             }
             
-            // 中心点
-            Circle()
-                .fill(Color.black)
-                .frame(width: 4, height: 4)
+            if let hit = pendingHit, let offset = suggestedOffset {
+                Circle()
+                    .fill(Color.orange.opacity(0.45))
+                    .frame(width: 14, height: 14)
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white, lineWidth: 1.5)
+                    )
+                    .position(
+                        metrics.pointInView(
+                            from: CGPoint(
+                                x: hit.position.x + offset.x,
+                                y: hit.position.y + offset.y
+                            )
+                        )
+                    )
+                    .animation(.easeInOut(duration: 0.25), value: suggestedOffset)
+            }
         }
         .frame(width: size.width, height: size.height)
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onEnded { value in
+                    handleTargetTap(at: metrics.pointInCentimeters(from: value.location))
+                }
+        )
         .alert("箭支重叠", isPresented: $showingOverlapAlert) {
             Button("使用建议位置") {
                 if let hit = pendingHit, let offset = suggestedOffset {
@@ -131,48 +128,33 @@ struct InteractiveTargetView: View {
     
     // MARK: - 处理靶面点击
     private func handleTargetTap(at position: CGPoint) {
-        // 计算点击位置到中心的距离（厘米单位）
-        let radius = sqrt(position.x * position.x + position.y * position.y)
+        let resolvedHit = targetFace.resolveHit(at: position)
         
-        // 根据半径找到对应的环
-        let hitRing = findRingByRadius(radius)
-        
-        // 创建箭着点
         let hit = ArrowHit(
-            position: position,
-            score: hitRing.score,
-            ringNumber: hitRing.ringNumber,
+            position: resolvedHit.position,
+            score: resolvedHit.score,
+            ringNumber: resolvedHit.ringNumber,
             timestamp: Date(),
             groupIndex: currentGroup,
             arrowIndex: currentArrowIndex,
             targetFaceType: targetFace.type
         )
         
-        // 检测重叠
+        guard !resolvedHit.isMiss else {
+            onArrowHit(hit)
+            return
+        }
+        
         let manager = ArrowHitManager()
         let overlapResult = manager.detectOverlap(newHit: hit, existingHits: arrowHits)
         
         if overlapResult.isOverlapped {
-            // 显示重叠处理选项
             pendingHit = hit
             suggestedOffset = overlapResult.suggestedOffset
             showingOverlapAlert = true
         } else {
-            // 直接添加箭着点
             onArrowHit(hit)
         }
-    }
-    
-    // 根据半径找到对应的环
-    private func findRingByRadius(_ radius: Double) -> TargetRing {
-        // 按照从内到外的顺序检查环
-        for ring in targetFace.rings.sorted(by: { $0.outerRadius < $1.outerRadius }) {
-            if radius <= ring.outerRadius {
-                return ring
-            }
-        }
-        // 如果超出所有环，返回最外层环
-        return targetFace.rings.max(by: { $0.outerRadius < $1.outerRadius }) ?? targetFace.rings.first!
     }
     
     private func clearPendingState() {
@@ -181,81 +163,45 @@ struct InteractiveTargetView: View {
     }
 }
 
-// MARK: - 可交互靶环视图
-struct InteractiveTargetRingView: View {
-    let ring: TargetRing
+private struct InteractiveTargetSpotView: View {
     let targetFace: TargetFace
-    let containerSize: CGSize
-    let onTapped: (CGPoint) -> Void
-    
-    private var ringRadius: Double {
-        let maxRadius = containerSize.width / 2
-        return (ring.outerRadius / (targetFace.diameter / 2)) * maxRadius
-    }
-    
-    private var ringColor: Color {
-        return targetFace.getRingColor(for: ring.ringNumber)
-    }
+    let metrics: TargetLayoutMetrics
+    let spotCenterCm: CGPoint
     
     var body: some View {
-        Circle()
-            .fill(ringColor)
-            .frame(width: ringRadius * 2, height: ringRadius * 2)
-            .overlay(
+        let spotCenter = metrics.pointInView(from: spotCenterCm)
+        
+        return ZStack {
+            ForEach(targetFace.rings.sorted(by: { $0.outerRadius > $1.outerRadius }), id: \.ringNumber) { ring in
                 Circle()
-                    .stroke(Color.black, lineWidth: 1)
-            )
-            .overlay(
-                // 分数标签
-                Text(ring.displayScore)
-                    .font(.system(size: min(ringRadius * 0.3, 16), weight: .bold))
-                    .foregroundColor(ringColor == .white || ringColor == .yellow ? .black : .white)
-            )
-            .contentShape(Circle())
-            .onTapGesture { location in
-                // 将点击位置转换为相对于靶面中心的坐标（厘米单位）
-                // location是相对于当前圆环视图的坐标，需要转换为相对于容器中心的坐标
-                let ringCenterX = ringRadius
-                let ringCenterY = ringRadius
-                
-                // 计算相对于圆环中心的像素坐标
-                let pixelX = location.x - ringCenterX
-                let pixelY = location.y - ringCenterY
-                
-                // 转换为厘米坐标（考虑缩放因子）
-                let maxRadius = containerSize.width / 2
-                let targetRadius = targetFace.diameter / 2
-                let scaleFactor = targetRadius / maxRadius
-                
-                let relativePosition = CGPoint(
-                    x: pixelX * scaleFactor,
-                    y: pixelY * scaleFactor
-                )
-                onTapped(relativePosition)
+                    .fill(targetFace.getRingColor(for: ring.ringNumber))
+                    .frame(
+                        width: CGFloat(ring.outerRadius * 2) * metrics.scale,
+                        height: CGFloat(ring.outerRadius * 2) * metrics.scale
+                    )
+                    .overlay(
+                        Circle()
+                            .stroke(Color.black.opacity(0.18), lineWidth: 1)
+                    )
+                    .position(spotCenter)
             }
+            
+            Circle()
+                .fill(Color.black.opacity(0.3))
+                .frame(width: metrics.centerDotSize, height: metrics.centerDotSize)
+                .position(spotCenter)
+        }
     }
 }
 
 // MARK: - 箭着点标记
 struct ArrowHitMarker: View {
     let hit: ArrowHit
-    let containerSize: CGSize
-    let targetFace: TargetFace
+    let metrics: TargetLayoutMetrics
     let index: Int
     
     private var markerPosition: CGPoint {
-        let centerX = containerSize.width / 2
-        let centerY = containerSize.height / 2
-        
-        // 将厘米坐标转换为像素坐标
-        let maxRadius = containerSize.width / 2
-        let targetRadius = targetFace.diameter / 2
-        let scaleFactor = maxRadius / targetRadius
-        
-        return CGPoint(
-            x: centerX + hit.position.x * scaleFactor,
-            y: centerY + hit.position.y * scaleFactor
-        )
+        metrics.pointInView(from: hit.position)
     }
     
     var body: some View {

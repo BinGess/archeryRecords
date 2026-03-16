@@ -6,11 +6,17 @@ class CozeService: ObservableObject {
     @Published private(set) var connectionError: Error?
     
     // 配置信息
-    private let accessToken = "pat_lFkb1HJY9YL2kiyzru1Ev1sIljmQTXvIk3eqYetwerediiXRG5Po7PgBoGgs0x77"
-    private let botId = "7470717548032557090"
-    private let baseURL = "https://api.coze.cn"
+    private let configuration: CozeConfiguration
+    private var accessToken: String { configuration.accessToken }
+    private var botId: String { configuration.botId }
+    private var baseURL: String { configuration.baseURL }
+
+    init(configuration: CozeConfiguration = CozeConfiguration.load() ?? .empty) {
+        self.configuration = configuration
+    }
     
     func getTrainingAdvice(data: ArcheryTrainingData) async throws -> TrainingAdvice {
+        try ensureConfiguration()
         print("\n=== 开始获取训练建议 ===")
         
         // 1. 构建基本信息部分
@@ -318,6 +324,7 @@ class CozeService: ObservableObject {
     }
     
     private func createConversation() async throws -> String {
+        try ensureConfiguration()
         let url = URL(string: "\(baseURL)/v1/conversation/create")!
         
         var request = URLRequest(url: url)
@@ -347,6 +354,7 @@ class CozeService: ObservableObject {
     }
     
     private func createMessage(conversationId: String, data: ArcheryTrainingData) async throws -> CozeStatusResponse {
+        try ensureConfiguration()
         let url = URL(string: "\(baseURL)/v1/conversation/message/create")!
             .appendingQueryItem(name: "conversation_id", value: conversationId)
         
@@ -406,7 +414,7 @@ class CozeService: ObservableObject {
         // 打印请求信息
         print("发送消息请求:")
         print("URL: \(url)")
-        print("Headers: \(request.allHTTPHeaderFields ?? [:])")
+        print("Headers: \(sanitizedHeaders(request.allHTTPHeaderFields ?? [:]))")
         print("Body: \(messageBody)")
         
         request.httpBody = try JSONSerialization.data(withJSONObject: messageBody)
@@ -464,6 +472,7 @@ class CozeService: ObservableObject {
     }
     
     private func pollForResult(conversationId: String, data: ArcheryTrainingData) async throws -> TrainingAdvice {
+        try ensureConfiguration()
         // 第一步：获取消息列表
         let listUrl = URL(string: "\(baseURL)/v1/conversation/message/list")!
             .appendingQueryItem(name: "conversation_id", value: conversationId)
@@ -558,6 +567,7 @@ class CozeService: ObservableObject {
     
     // 新增方法：获取具体消息内容
     private func retrieveMessage(conversationId: String, messageId: String, data: ArcheryTrainingData) async throws -> TrainingAdvice {
+        try ensureConfiguration()
         let messageUrl = URL(string: "\(baseURL)/v1/conversation/message/retrieve")!
             .appendingQueryItem(name: "conversation_id", value: conversationId)
             .appendingQueryItem(name: "message_id", value: messageId)
@@ -824,6 +834,7 @@ class CozeService: ObservableObject {
     
     // 修改测试方法
     func testConnection() async throws -> Bool {
+        try ensureConfiguration()
         // 创建一个测试用的射箭记录
         let testRecord = ArcheryGroupRecord(
             id: UUID(),
@@ -902,6 +913,20 @@ class CozeService: ObservableObject {
         }
         return distribution
     }
+
+    private func ensureConfiguration() throws {
+        guard configuration.isConfigured else {
+            throw CozeError.configurationMissing
+        }
+    }
+
+    private func sanitizedHeaders(_ headers: [String: String]) -> [String: String] {
+        var sanitized = headers
+        if sanitized["Authorization"] != nil {
+            sanitized["Authorization"] = "Bearer ***"
+        }
+        return sanitized
+    }
 }
 
 extension URL {
@@ -939,7 +964,7 @@ extension CozeService {
         print("=== 请求详情 ===")
         print("URL: \(request.url?.absoluteString ?? "无")")
         print("方法: \(request.httpMethod ?? "无")")
-        print("头部: \(request.allHTTPHeaderFields ?? [:])")
+        print("头部: \(sanitizedHeaders(request.allHTTPHeaderFields ?? [:]))")
         if let data = data {
             print("请求体: \(String(data: data, encoding: .utf8) ?? "无")")
         }

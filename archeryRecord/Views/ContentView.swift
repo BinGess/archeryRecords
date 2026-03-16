@@ -2,14 +2,10 @@ import SwiftUI
 
 // 主视图，作为应用的根视图
 struct MainView: View {
-    @StateObject private var archeryStore = ArcheryStore()
-    
-    
     var body: some View {
         //TabView {
             // 使用 NewContentView 作为默认启动页面
             NewContentView()
-                .environmentObject(archeryStore)  // 确保传递环境对象
                 //.tabItem {
                   //  Image(systemName: "list.bullet")
                     //Text(L10n.Tab.record)
@@ -141,7 +137,7 @@ struct RecordsListView: View {
                             switch record {
                             case .single(let singleRecord):
                                 NavigationLink {
-                                    ScoreDetailView(recordId: singleRecord.id, recordType: "single")
+                                    ScoreDetailView(recordId: singleRecord.id)
                                 } label: {
                                     RecordRow(record: singleRecord)
                                 }
@@ -163,12 +159,6 @@ struct RecordsListView: View {
         #else
         .background(Color.gray.opacity(0.1))
         #endif
-        .onAppear {
-            archeryStore.loadRecords()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .recordsDidChange)) { _ in
-            archeryStore.loadRecords()
-        }
         .refreshable {
             archeryStore.loadRecords()
         }
@@ -213,20 +203,23 @@ struct EmptyStateView: View {
                 .scaledToFit()
                 .frame(width: 120, height: 120)
                 .foregroundStyle(LinearGradient(
-                    colors: [.blue, .blue.opacity(0.6)],
+                    colors: SharedStyles.GradientSet.sky,
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 ))
                 .padding(.bottom, 8)
             
             Text(L10n.Content.emptyStatePrompt)
-                .font(.system(size: 16))
-                .foregroundColor(.gray.opacity(0.8))
+                .sharedTextStyle(
+                    SharedStyles.Text.body,
+                    color: SharedStyles.secondaryTextColor,
+                    lineSpacing: SharedStyles.bodyLineSpacing
+                )
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.white.opacity(0.5))
-        .cornerRadius(20)
+        .padding(.vertical, 28)
+        .clayCard(tint: SharedStyles.Accent.sky, radius: 28)
         .padding(.horizontal, 16)
     }
 }
@@ -272,14 +265,14 @@ struct GroupRecordRow: View {
             HStack(spacing: 20) {
                 InfoItem(icon: "arrow.up.and.down.and.arrow.left.and.right", text: record.bowType)
                 InfoItem(icon: "triangle", text: record.distance)
-                InfoItem(icon: "square.grid.3x3", text: record.targetType)
+                InfoItem(icon: "square.grid.3x3", text: TargetTypeDisplay.primaryTitle(for: record.targetType))
             }
             
             // 分数网格
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 6), spacing: 8) {
                 ForEach(0..<record.groupScores.count, id: \.self) { groupIndex in
                     VStack(spacing: 4) {
-                        Text("第\(groupIndex + 1)组")
+                        Text(L10n.GroupDetail.groupNumber(groupIndex + 1))
                             .font(.system(size: 12))
                             .foregroundColor(.gray.opacity(0.6))
                         
@@ -365,7 +358,7 @@ struct RecordRow: View {
             HStack(spacing: 20) {
                 InfoItem(icon: "arrow.up.and.down.and.arrow.left.and.right", text: record.bowType)
                 InfoItem(icon: "triangle", text: record.distance)
-                InfoItem(icon: "square.grid.3x3", text: record.targetType)
+                InfoItem(icon: "square.grid.3x3", text: TargetTypeDisplay.primaryTitle(for: record.targetType))
             }
             
             // 分数网格
@@ -434,7 +427,7 @@ struct RecordListView: View {
                 
                 if record.type == "single" {
                     NavigationLink(
-                        destination: ScoreDetailView(recordId: record.id, recordType: "single")
+                        destination: ScoreDetailView(recordId: record.id)
                     ) {
                         EmptyView()
                     }
@@ -499,4 +492,3 @@ struct ActionButton: View {
 }
 
 // 移除不必要的包装视图
-

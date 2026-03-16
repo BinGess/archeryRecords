@@ -1,12 +1,13 @@
 import Foundation
+import SwiftUI
 
-extension Notification.Name {
-    static let recordsDidChange = Notification.Name("recordsDidChange")
-}
+extension UserDefaults: @retroactive @unchecked Sendable {}
 
-class ArcheryStore: ObservableObject {
+@MainActor
+final class ArcheryStore: ObservableObject {
     @Published private(set) var records: [ArcheryRecord] = []
     @Published private(set) var groupRecords: [ArcheryGroupRecord] = []
+    @Published private(set) var isICloudSyncEnabled: Bool
     
     // 从 Models 版本保留的常量定义
     private let recordsKey = "archeryRecords"
@@ -14,179 +15,336 @@ class ArcheryStore: ObservableObject {
     private let lastBowTypeKey = "lastBowType"
     private let lastDistanceKey = "lastDistance"
     private let lastTargetTypeKey = "lastTargetType"
+    private let iCloudSyncEnabledKey = "iCloudSyncEnabled"
+    private let lastModifiedKey = "archeryStoreLastModified"
+    private let iCloudSnapshotFileName = "ArcheryStoreSnapshot.json"
+    private let userDefaults: UserDefaults
+    private let persistenceQueue = DispatchQueue(label: "com.timmy.archeryRecord.persistence", qos: .utility)
+    private var lastModifiedAt: Date = .distantPast
     
-    init() {
+    init(userDefaults: UserDefaults = .standard) {
+        self.userDefaults = userDefaults
+        self.isICloudSyncEnabled = userDefaults.bool(forKey: iCloudSyncEnabledKey)
         loadRecords()
     }
     
     // 保存最后一次使用的选项
     func saveLastUsedOptions(bowType: String, distance: String, targetType: String) {
-        UserDefaults.standard.set(bowType, forKey: lastBowTypeKey)
-        UserDefaults.standard.set(distance, forKey: lastDistanceKey)
-        UserDefaults.standard.set(targetType, forKey: lastTargetTypeKey)
+        userDefaults.set(bowType, forKey: lastBowTypeKey)
+        userDefaults.set(distance, forKey: lastDistanceKey)
+        userDefaults.set(targetType, forKey: lastTargetTypeKey)
     }
     
     // 获取最后一次使用的选项
     func getLastUsedOptions() -> (bowType: String, distance: String, targetType: String) {
-        let bowType = UserDefaults.standard.string(forKey: lastBowTypeKey) ?? L10n.Options.BowType.compound
-        let distance = UserDefaults.standard.string(forKey: lastDistanceKey) ?? L10n.Options.Distance.d18m
-        let targetType = UserDefaults.standard.string(forKey: lastTargetTypeKey) ?? L10n.Options.TargetType.tCompoundInner10
+        let bowType = userDefaults.string(forKey: lastBowTypeKey) ?? L10n.Options.BowType.compound
+        let distance = userDefaults.string(forKey: lastDistanceKey) ?? L10n.Options.Distance.d18m
+        let targetType = userDefaults.string(forKey: lastTargetTypeKey) ?? L10n.Options.TargetType.tCompoundInner10
         return (bowType, distance, targetType)
     }
     
     func loadRecords() {
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self = self else { return }
+        let userDefaults = self.userDefaults
+        let recordsKey = self.recordsKey
+        let groupRecordsKey = self.groupRecordsKey
+        let lastModifiedKey = self.lastModifiedKey
+        let iCloudSyncEnabledKey = self.iCloudSyncEnabledKey
+        
+        persistenceQueue.async {
+            let decoder = JSONDecoder()
+            let records = userDefaults.data(forKey: recordsKey)
+                .flatMap { try? decoder.decode([ArcheryRecord].self, from: $0) } ?? []
             
-            let records = UserDefaults.standard.data(forKey: self.recordsKey)
-                .flatMap { try? JSONDecoder().decode([ArcheryRecord].self, from: $0) } ?? []
+            let storedGroupRecords = userDefaults.data(forKey: groupRecordsKey)
+                .flatMap { try? decoder.decode([ArcheryGroupRecord].self, from: $0) } ?? []
+            let migration = Self.migrateLegacyGroupRecords(storedGroupRecords)
+            let storedModifiedAt = userDefaults.object(forKey: lastModifiedKey) as? Date
+            let resolvedModifiedAt = storedModifiedAt
+                ?? Self.inferLastModifiedDate(records: records, groupRecords: migration.records)
+            let storedICloudEnabled = userDefaults.bool(forKey: iCloudSyncEnabledKey)
             
-            var groupRecords = UserDefaults.standard.data(forKey: self.groupRecordsKey)
-                .flatMap { try? JSONDecoder().decode([ArcheryGroupRecord].self, from: $0) } ?? []
-            
-            // 数据迁移：为缺少groupArrowHits的记录添加空数组
-            var needsMigration = false
-            for i in 0..<groupRecords.count {
-                if groupRecords[i].groupArrowHits == nil {
-                    // 为每组创建空的ArrowHit数组
-                    var groupArrowHits: [[ArrowHit]] = []
-                    for _ in 0..<groupRecords[i].numberOfGroups {
-                        groupArrowHits.append([])
-                    }
-                    
-                    // 创建新的记录实例，包含迁移的数据
-                    groupRecords[i] = ArcheryGroupRecord(
-                        id: groupRecords[i].id,
-                        bowType: groupRecords[i].bowType,
-                        distance: groupRecords[i].distance,
-                        targetType: groupRecords[i].targetType,
-                        groupScores: groupRecords[i].groupScores,
-                        date: groupRecords[i].date,
-                        numberOfGroups: groupRecords[i].numberOfGroups,
-                        arrowsPerGroup: groupRecords[i].arrowsPerGroup,
-                        groupArrowHits: groupArrowHits
-                    )
-                    needsMigration = true
-                }
-            }
-            
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.records = records
-                self.groupRecords = groupRecords
-                
-                // 如果进行了数据迁移，保存更新后的数据
-                if needsMigration {
-                    self.saveRecords()
+                self.groupRecords = migration.records
+                self.lastModifiedAt = resolvedModifiedAt
+                self.isICloudSyncEnabled = storedICloudEnabled
+
+                if migration.didMigrate || storedModifiedAt == nil {
+                    self.persistCurrentState(updatedAt: resolvedModifiedAt, syncToICloud: false)
+                }
+
+                if storedICloudEnabled {
+                    self.synchronizeWithICloudIfNeeded()
                 }
             }
         }
     }
     
     func addRecord(_ record: ArcheryRecord) {
-        DispatchQueue.main.async {
-            self.records.append(record)
-            self.objectWillChange.send()
-            self.saveRecords()
-            
-            // 发送通知
-            NotificationCenter.default.post(name: .recordsDidChange, object: nil)
-        }
+        records.append(record)
+        persistCurrentState()
     }
     
     func addGroupRecord(_ record: ArcheryGroupRecord) {
-        DispatchQueue.main.async {
-            self.groupRecords.append(record)
-            self.objectWillChange.send()
-            self.saveRecords()
-            
-            // 发送通知
-            NotificationCenter.default.post(name: .recordsDidChange, object: nil)
-        }
+        groupRecords.append(record)
+        persistCurrentState()
     }
     
-    private func saveRecords() {
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            guard let self = self else { return }
-            
-            if let encodedRecords = try? JSONEncoder().encode(self.records) {
-                UserDefaults.standard.set(encodedRecords, forKey: self.recordsKey)
-            }
-            
-            if let encodedGroupRecords = try? JSONEncoder().encode(self.groupRecords) {
-                UserDefaults.standard.set(encodedGroupRecords, forKey: self.groupRecordsKey)
-            }
-            
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-                // 保存完成后也发送通知
-                NotificationCenter.default.post(name: .recordsDidChange, object: nil)
-            }
-        }
+    private func persistCurrentState() {
+        persistCurrentState(updatedAt: Date(), syncToICloud: true)
+    }
+
+    private func persistCurrentState(updatedAt: Date, syncToICloud: Bool) {
+        lastModifiedAt = updatedAt
+        let snapshot = StoreSnapshot(records: records, groupRecords: groupRecords, updatedAt: updatedAt)
+        persistSnapshotToUserDefaults(snapshot)
+
+        guard syncToICloud, isICloudSyncEnabled else { return }
+        persistSnapshotToICloud(snapshot)
+    }
+
+    private func persistSnapshotToUserDefaults(_ snapshot: StoreSnapshot) {
+        Self.persistSnapshotToUserDefaults(
+            snapshot,
+            userDefaults: userDefaults,
+            recordsKey: recordsKey,
+            groupRecordsKey: groupRecordsKey,
+            lastModifiedKey: lastModifiedKey,
+            queue: persistenceQueue
+        )
     }
     
     // 合并两个版本的删除方法
     func deleteRecord(id: UUID) {
         if let index = records.firstIndex(where: { $0.id == id }) {
             records.remove(at: index)
-            objectWillChange.send()
-            saveRecords()
-            
-            // 发送通知
-            NotificationCenter.default.post(name: .recordsDidChange, object: nil)
+            persistCurrentState()
         }
     }
     
     func deleteGroupRecord(id: UUID) {
         if let index = groupRecords.firstIndex(where: { $0.id == id }) {
             groupRecords.remove(at: index)
-            objectWillChange.send()
-            saveRecords()
-            
-            // 发送通知
-            NotificationCenter.default.post(name: .recordsDidChange, object: nil)
+            persistCurrentState()
         }
     }
     
-    // 改进的获取记录方法
-    func getRecord(id: UUID, type: String) -> ArcheryRecord? {
-        if type == "single" {
-            return records.first { $0.id == id }
-        }
-        return nil
+    func getRecord(id: UUID) -> ArcheryRecord? {
+        records.first { $0.id == id }
     }
     
-    func getGroupRecord(id: UUID, type: String) -> ArcheryGroupRecord? {
-        if type == "group" {
-            return groupRecords.first { $0.id == id }
-        }
-        return nil
+    func getGroupRecord(id: UUID) -> ArcheryGroupRecord? {
+        groupRecords.first { $0.id == id }
     }
     
     // 更新团体记录
     func updateGroupRecord(_ record: ArcheryGroupRecord) {
-        DispatchQueue.main.async {
-            if let index = self.groupRecords.firstIndex(where: { $0.id == record.id }) {
-                self.groupRecords[index] = record
-                self.objectWillChange.send()
-                self.saveRecords()
-                
-                // 发送通知
-                NotificationCenter.default.post(name: .recordsDidChange, object: nil)
-            }
+        if let index = groupRecords.firstIndex(where: { $0.id == record.id }) {
+            groupRecords[index] = record
+            persistCurrentState()
         }
     }
     
     // 更新单人记录
     func updateRecord(_ record: ArcheryRecord) {
-        DispatchQueue.main.async {
-            if let index = self.records.firstIndex(where: { $0.id == record.id }) {
-                self.records[index] = record
-                self.objectWillChange.send()
-                self.saveRecords()
-                
-                // 发送通知
-                NotificationCenter.default.post(name: .recordsDidChange, object: nil)
+        if let index = records.firstIndex(where: { $0.id == record.id }) {
+            records[index] = record
+            persistCurrentState()
+        }
+    }
+
+    func setICloudSyncEnabled(_ enabled: Bool) {
+        guard isICloudSyncEnabled != enabled else { return }
+
+        isICloudSyncEnabled = enabled
+        userDefaults.set(enabled, forKey: iCloudSyncEnabledKey)
+
+        if enabled {
+            synchronizeWithICloudIfNeeded()
+        }
+    }
+
+    func synchronizeWithICloudIfNeeded() {
+        guard isICloudSyncEnabled else { return }
+
+        let localSnapshot = StoreSnapshot(
+            records: records,
+            groupRecords: groupRecords,
+            updatedAt: lastModifiedAt
+        )
+        let userDefaults = self.userDefaults
+        let recordsKey = self.recordsKey
+        let groupRecordsKey = self.groupRecordsKey
+        let lastModifiedKey = self.lastModifiedKey
+        let iCloudSnapshotFileName = self.iCloudSnapshotFileName
+
+        persistenceQueue.async {
+            guard let fileURL = Self.cloudSnapshotURL(fileName: iCloudSnapshotFileName) else { return }
+
+            let cloudSnapshot = Self.loadCloudSnapshot(from: fileURL)
+
+            if let cloudSnapshot {
+                if cloudSnapshot.updatedAt > localSnapshot.updatedAt {
+                    Self.persistSnapshotToUserDefaults(
+                        cloudSnapshot,
+                        userDefaults: userDefaults,
+                        recordsKey: recordsKey,
+                        groupRecordsKey: groupRecordsKey,
+                        lastModifiedKey: lastModifiedKey,
+                        queue: self.persistenceQueue
+                    )
+
+                    Task { @MainActor in
+                        self.records = cloudSnapshot.records
+                        self.groupRecords = cloudSnapshot.groupRecords
+                        self.lastModifiedAt = cloudSnapshot.updatedAt
+                    }
+                } else if localSnapshot.updatedAt > cloudSnapshot.updatedAt || !Self.snapshotsMatch(localSnapshot, cloudSnapshot) {
+                    Self.writeCloudSnapshot(localSnapshot, to: fileURL)
+                }
+            } else {
+                Self.writeCloudSnapshot(localSnapshot, to: fileURL)
             }
         }
+    }
+
+    func handleScenePhaseChange(_ phase: ScenePhase) {
+        guard phase == .active else { return }
+        synchronizeWithICloudIfNeeded()
+    }
+    
+    nonisolated static func migrateLegacyGroupRecords(_ groupRecords: [ArcheryGroupRecord]) -> (records: [ArcheryGroupRecord], didMigrate: Bool) {
+        var migratedRecords = groupRecords
+        var didMigrate = false
+        
+        for index in migratedRecords.indices where migratedRecords[index].groupArrowHits == nil {
+            let record = migratedRecords[index]
+            migratedRecords[index] = ArcheryGroupRecord(
+                id: record.id,
+                bowType: record.bowType,
+                distance: record.distance,
+                targetType: record.targetType,
+                groupScores: record.groupScores,
+                date: record.date,
+                numberOfGroups: record.numberOfGroups,
+                arrowsPerGroup: record.arrowsPerGroup,
+                groupArrowHits: Array(repeating: [], count: record.numberOfGroups)
+            )
+            didMigrate = true
+        }
+        
+        return (migratedRecords, didMigrate)
+    }
+
+    nonisolated static func inferLastModifiedDate(
+        records: [ArcheryRecord],
+        groupRecords: [ArcheryGroupRecord]
+    ) -> Date {
+        let latestSingleDate = records.map(\.date).max() ?? .distantPast
+        let latestGroupDate = groupRecords.map(\.date).max() ?? .distantPast
+        return max(latestSingleDate, latestGroupDate)
+    }
+
+    private func persistSnapshotToICloud(_ snapshot: StoreSnapshot) {
+        let iCloudSnapshotFileName = self.iCloudSnapshotFileName
+
+        persistenceQueue.async {
+            guard let fileURL = Self.cloudSnapshotURL(fileName: iCloudSnapshotFileName) else { return }
+            Self.writeCloudSnapshot(snapshot, to: fileURL)
+        }
+    }
+
+    nonisolated private static func persistSnapshotToUserDefaults(
+        _ snapshot: StoreSnapshot,
+        userDefaults: UserDefaults,
+        recordsKey: String,
+        groupRecordsKey: String,
+        lastModifiedKey: String,
+        queue: DispatchQueue
+    ) {
+        queue.async {
+            let encoder = JSONEncoder()
+
+            if let encodedRecords = try? encoder.encode(snapshot.records) {
+                userDefaults.set(encodedRecords, forKey: recordsKey)
+            }
+
+            if let encodedGroupRecords = try? encoder.encode(snapshot.groupRecords) {
+                userDefaults.set(encodedGroupRecords, forKey: groupRecordsKey)
+            }
+
+            userDefaults.set(snapshot.updatedAt, forKey: lastModifiedKey)
+        }
+    }
+
+    nonisolated private static func cloudSnapshotURL(fileName: String) -> URL? {
+        let fileManager = FileManager.default
+        guard let containerURL = fileManager.url(forUbiquityContainerIdentifier: nil) else {
+            return nil
+        }
+
+        let documentsURL = containerURL.appendingPathComponent("Documents", isDirectory: true)
+
+        if !fileManager.fileExists(atPath: documentsURL.path) {
+            try? fileManager.createDirectory(at: documentsURL, withIntermediateDirectories: true)
+        }
+
+        return documentsURL.appendingPathComponent(fileName, isDirectory: false)
+    }
+
+    nonisolated private static func loadCloudSnapshot(from fileURL: URL) -> StoreSnapshot? {
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: fileURL.path) else {
+            return nil
+        }
+
+        if fileManager.isUbiquitousItem(at: fileURL) {
+            try? fileManager.startDownloadingUbiquitousItem(at: fileURL)
+        }
+
+        let coordinator = NSFileCoordinator()
+        var coordinationError: NSError?
+        var snapshot: StoreSnapshot?
+
+        coordinator.coordinate(readingItemAt: fileURL, options: [], error: &coordinationError) { coordinatedURL in
+            guard
+                let data = try? Data(contentsOf: coordinatedURL),
+                let decodedSnapshot = try? JSONDecoder().decode(StoreSnapshot.self, from: data)
+            else {
+                return
+            }
+
+            snapshot = decodedSnapshot
+        }
+
+        return snapshot
+    }
+
+    nonisolated private static func writeCloudSnapshot(_ snapshot: StoreSnapshot, to fileURL: URL) {
+        guard let data = try? JSONEncoder().encode(snapshot) else { return }
+
+        let coordinator = NSFileCoordinator()
+        var coordinationError: NSError?
+
+        coordinator.coordinate(writingItemAt: fileURL, options: [], error: &coordinationError) { coordinatedURL in
+            try? data.write(to: coordinatedURL, options: Data.WritingOptions.atomic)
+        }
+    }
+
+    nonisolated private static func snapshotsMatch(_ lhs: StoreSnapshot, _ rhs: StoreSnapshot) -> Bool {
+        guard
+            let lhsData = try? JSONEncoder().encode(lhs),
+            let rhsData = try? JSONEncoder().encode(rhs)
+        else {
+            return false
+        }
+
+        return lhsData == rhsData
+    }
+    
+    private struct StoreSnapshot: Codable {
+        let records: [ArcheryRecord]
+        let groupRecords: [ArcheryGroupRecord]
+        let updatedAt: Date
     }
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-struct ArcheryGroupRecord: Codable, Identifiable {
+struct ArcheryGroupRecord: Codable, Identifiable, Hashable {
     let id: UUID
     let bowType: String
     let distance: String
@@ -42,5 +42,13 @@ struct ArcheryGroupRecord: Codable, Identifiable {
             if score == "M" { return 0 }
             return Int(score)
         }.reduce(0, +)
+    }
+
+    static func == (lhs: ArcheryGroupRecord, rhs: ArcheryGroupRecord) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }

@@ -18,12 +18,11 @@ struct GroupScoreCardContent: View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("第\(groupIndex + 1)组")
-                        .font(.headline)
+                    Text(L10n.Completion.groupLabel(groupIndex + 1))
+                        .sharedTextStyle(SharedStyles.Text.title)
                     Spacer()
-                    Text("得分: \(groupScore)")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.purple)
+                    Text(L10n.GroupDetail.groupScore(groupScore))
+                        .sharedTextStyle(SharedStyles.Text.caption, color: SharedStyles.primaryColor)
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
@@ -38,22 +37,33 @@ struct GroupScoreCardContent: View {
                             onScoreSelected(index)
                         } label: {
                             ZStack {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(selectedGroupIndex == groupIndex && selectedScoreIndex == index ? 
-                                          Color.purple.opacity(0.1) : Color.gray.opacity(0.05))
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(
+                                        selectedGroupIndex == groupIndex && selectedScoreIndex == index
+                                        ? SharedStyles.primaryColor.opacity(0.14)
+                                        : SharedStyles.groupBackgroundColor
+                                    )
                                     .frame(height: 50)
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                            .stroke(
+                                                selectedGroupIndex == groupIndex && selectedScoreIndex == index
+                                                ? SharedStyles.primaryColor.opacity(0.35)
+                                                : Color.white.opacity(0.55),
+                                                lineWidth: 1
+                                            )
+                                    }
                                 
                                 if groupScores[index].isEmpty {
                                     Text("\(index + 1).")
-                                        .font(.system(size: 16))
-                                        .foregroundColor(.gray.opacity(0.5))
+                                        .sharedTextStyle(SharedStyles.Text.body, color: SharedStyles.tertiaryTextColor)
                                 } else {
                                     Text(groupScores[index])
-                                        .font(.system(size: 20, weight: .medium))
-                                        .foregroundColor(.black)
+                                        .sharedTextStyle(SharedStyles.Text.title, color: SharedStyles.primaryTextColor)
                                 }
                             }
                         }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding([.horizontal, .bottom], 16)
@@ -71,16 +81,15 @@ struct GroupScoreCardContent: View {
                     .padding(.bottom, 16)
                 }
             }
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.white)
-                    .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-            )
+            .clayCard(tint: SharedStyles.Accent.sky, radius: 18)
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(selectedGroupIndex == groupIndex ? 
-                            Color.purple.opacity(0.3) : Color.clear, 
-                            lineWidth: 1.5)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(
+                        selectedGroupIndex == groupIndex
+                        ? SharedStyles.primaryColor.opacity(0.26)
+                        : Color.clear,
+                        lineWidth: 1.2
+                    )
                     .padding(1)
             )
             .padding(.horizontal, 16)
@@ -90,25 +99,23 @@ struct GroupScoreCardContent: View {
                 Button(action: onAddGroup) {
                     HStack {
                         Spacer()
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundColor(.purple)
-                        Text("再来一组")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.purple)
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(SharedStyles.primaryColor)
+                        Text(L10n.Completion.groupAgain)
+                            .sharedTextStyle(SharedStyles.Text.bodyEmphasis, color: SharedStyles.primaryColor)
                         Spacer()
                     }
                     .padding(.vertical, 15)
                     .frame(maxWidth: .infinity)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.white)
-                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.purple.opacity(0.3), lineWidth: 1)
-                    )
+                    .background(SharedStyles.groupBackgroundColor)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(SharedStyles.primaryColor.opacity(0.18), lineWidth: 1)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
+                .buttonStyle(.plain)
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
             }

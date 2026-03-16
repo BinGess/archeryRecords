@@ -13,13 +13,12 @@ struct AiCoachContent: View {
             // 标题栏
             HStack {
                 Text("AI教练")
-                    .font(SharedStyles.Text.title)
-                    .foregroundColor(.primary)
+                    .sharedTextStyle(SharedStyles.Text.title)
                 Spacer()
                 Button(action: {
-                    // 点击刷新按钮时，强制刷新数据
+                    // 已按需求关闭 AI 教练刷新请求，避免再触发服务端智能体调用。
                     Task {
-                        await loadTrainingAdvice(for: record, forceRefresh: true)
+                        // await loadTrainingAdvice(for: record, forceRefresh: true)
                     }
                 }) {
                     Image(systemName: "arrow.clockwise")
@@ -51,8 +50,7 @@ struct AiCoachContent: View {
                             .foregroundColor(SharedStyles.primaryColor)
                         
                         markdownText(advice.performanceLevel)
-                            .font(SharedStyles.Text.body)
-                            .foregroundColor(.primary)
+                            .sharedTextStyle(SharedStyles.Text.body, lineSpacing: SharedStyles.bodyLineSpacing)
                             .padding(.leading)
                     }
                     .padding(.vertical, 8)
@@ -70,7 +68,7 @@ struct AiCoachContent: View {
                                 Text("•")
                                     .foregroundColor(.orange)
                                 markdownText(issue)
-                                    .font(SharedStyles.Text.body)
+                                    .sharedTextStyle(SharedStyles.Text.body, lineSpacing: SharedStyles.bodyLineSpacing)
                             }
                             .padding(.leading)
                         }
@@ -90,22 +88,23 @@ struct AiCoachContent: View {
                                 Text("•")
                                     .foregroundColor(.yellow)
                                 markdownText(suggestion)
-                                    .font(SharedStyles.Text.body)
+                                    .sharedTextStyle(SharedStyles.Text.body, lineSpacing: SharedStyles.bodyLineSpacing)
                             }
                             .padding(.leading)
                         }
                     }
                     .padding(.vertical, 8)
-                } else if let error = adviceError {
+                } else if adviceError != nil {
                     VStack(spacing: 12) {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.red)
                             .font(.system(size: 40))
-                        Text("似乎教练有点忙，暂时无法给出建议")
-                            .font(SharedStyles.Text.subtitle)
+                        Text("AI教练功能已关闭")
+                            .sharedTextStyle(SharedStyles.Text.bodyEmphasis)
                         Button("点击再试") {
                             Task {
-                                await loadTrainingAdvice(for: record, forceRefresh: true)
+                                // 已按需求关闭 AI 教练重试请求。
+                                // await loadTrainingAdvice(for: record, forceRefresh: true)
                             }
                         }
                         .padding(.top)
@@ -130,8 +129,8 @@ struct AiCoachContent: View {
             if let stored = TrainingAdviceStorage.get(for: record.id, type: .single) {
                 trainingAdvice = stored
             } else {
-                // 如果本地没有缓存，则请求网络
-                await loadTrainingAdvice(for: record)
+                // 已按需求关闭 AI 教练自动请求，避免进入页面时触发服务端智能体调用。
+                // await loadTrainingAdvice(for: record)
             }
         }
     }
@@ -155,52 +154,57 @@ struct AiCoachContent: View {
         // 如果已有建议且不强制刷新，则直接返回
         if trainingAdvice != nil && !forceRefresh { return }
         
-        isLoadingAdvice = true
-        adviceError = nil
-        
-        // 创建一个后台任务来处理请求
-        Task.detached(priority: .background) {
-            do {
-                // 创建 ArcheryTrainingData 对象
-                let trainingData = cozeService.prepareTrainingData(record: record)
-                
-                let advice = try await cozeService.getTrainingAdvice(data: trainingData)
-                
-                // 检查是否包含错误信息
-                if advice.performanceLevel.contains("很抱歉") || 
-                   advice.performanceLevel.contains("出现错误") || 
-                   advice.performanceLevel.contains("无法为你提供") {
-                    // 如果包含错误信息，抛出异常
-                    throw NSError(domain: "AICoach", code: 1001, 
-                                 userInfo: [NSLocalizedDescriptionKey: "似乎教练有点忙，暂时无法给出建议"])
-                }
-                
-                let adviceWithMeta = TrainingAdvice(
-                    performanceLevel: advice.performanceLevel,
-                    issues: advice.issues,
-                    suggestions: advice.suggestions,
-                    improvements: advice.improvements,
-                    recordId: record.id,
-                    recordType: .single,
-                    timestamp: Date()
-                )
-                
-                // 保存到本地
-                TrainingAdviceStorage.save(adviceWithMeta)
-                
-                // 更新UI状态
-                await MainActor.run {
-                    trainingAdvice = adviceWithMeta
-                    isLoadingAdvice = false
-                }
-            } catch {
-                // 更新UI状态
-                await MainActor.run {
-                    adviceError = error
-                    isLoadingAdvice = false
-                }
-            }
+        await MainActor.run {
+            isLoadingAdvice = false
+            adviceError = NSError(
+                domain: "AICoach",
+                code: 1002,
+                userInfo: [NSLocalizedDescriptionKey: "AI教练功能已关闭"]
+            )
         }
+
+        // 已按需求关闭服务端 AI 教练请求，保留原逻辑注释以便后续恢复。
+        // isLoadingAdvice = true
+        // adviceError = nil
+        //
+        // Task.detached(priority: .background) {
+        //     do {
+        //         let trainingData = cozeService.prepareTrainingData(record: record)
+        //         let advice = try await cozeService.getTrainingAdvice(data: trainingData)
+        //
+        //         if advice.performanceLevel.contains("很抱歉") ||
+        //            advice.performanceLevel.contains("出现错误") ||
+        //            advice.performanceLevel.contains("无法为你提供") {
+        //             throw NSError(
+        //                 domain: "AICoach",
+        //                 code: 1001,
+        //                 userInfo: [NSLocalizedDescriptionKey: "似乎教练有点忙，暂时无法给出建议"]
+        //             )
+        //         }
+        //
+        //         let adviceWithMeta = TrainingAdvice(
+        //             performanceLevel: advice.performanceLevel,
+        //             issues: advice.issues,
+        //             suggestions: advice.suggestions,
+        //             improvements: advice.improvements,
+        //             recordId: record.id,
+        //             recordType: .single,
+        //             timestamp: Date()
+        //         )
+        //
+        //         TrainingAdviceStorage.save(adviceWithMeta)
+        //
+        //         await MainActor.run {
+        //             trainingAdvice = adviceWithMeta
+        //             isLoadingAdvice = false
+        //         }
+        //     } catch {
+        //         await MainActor.run {
+        //             adviceError = error
+        //             isLoadingAdvice = false
+        //         }
+        //     }
+        // }
     }
 }
 
@@ -217,13 +221,12 @@ struct AiCoachGroupContent: View {
             // 标题栏
             HStack {
                 Text("AI教练")
-                    .font(SharedStyles.Text.title)
-                    .foregroundColor(.primary)
+                    .sharedTextStyle(SharedStyles.Text.title)
                 Spacer()
                 Button(action: {
-                    // 点击刷新按钮时，强制刷新数据
+                    // 已按需求关闭 AI 教练刷新请求，避免再触发服务端智能体调用。
                     Task {
-                        await loadTrainingAdvice(for: record, forceRefresh: true)
+                        // await loadTrainingAdvice(for: record, forceRefresh: true)
                     }
                 }) {
                     Image(systemName: "arrow.clockwise")
@@ -256,8 +259,7 @@ struct AiCoachGroupContent: View {
                             .foregroundColor(SharedStyles.primaryColor)
                         
                         markdownText(advice.performanceLevel)
-                            .font(SharedStyles.Text.body)
-                            .foregroundColor(.primary)
+                            .sharedTextStyle(SharedStyles.Text.body, lineSpacing: SharedStyles.bodyLineSpacing)
                             .padding(.leading)
                     }
                     .padding(.vertical, 8)
@@ -275,7 +277,7 @@ struct AiCoachGroupContent: View {
                                 Text("•")
                                     .foregroundColor(.orange)
                                 markdownText(issue)
-                                    .font(SharedStyles.Text.body)
+                                    .sharedTextStyle(SharedStyles.Text.body, lineSpacing: SharedStyles.bodyLineSpacing)
                             }
                             .padding(.leading)
                         }
@@ -295,22 +297,23 @@ struct AiCoachGroupContent: View {
                                 Text("•")
                                     .foregroundColor(.yellow)
                                 markdownText(suggestion)
-                                    .font(SharedStyles.Text.body)
+                                    .sharedTextStyle(SharedStyles.Text.body, lineSpacing: SharedStyles.bodyLineSpacing)
                             }
                             .padding(.leading)
                         }
                     }
                     .padding(.vertical, 8)
-                } else if let error = adviceError {
+                } else if adviceError != nil {
                     VStack(spacing: 12) {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.red)
                             .font(.system(size: 40))
-                        Text("似乎教练有点忙，暂时无法给出建议")
-                            .font(SharedStyles.Text.subtitle)
+                        Text("AI教练功能已关闭")
+                            .sharedTextStyle(SharedStyles.Text.bodyEmphasis)
                         Button("点击再试") {
                             Task {
-                                await loadTrainingAdvice(for: record, forceRefresh: true)
+                                // 已按需求关闭 AI 教练重试请求。
+                                // await loadTrainingAdvice(for: record, forceRefresh: true)
                             }
                         }
                         .padding(.top)
@@ -335,8 +338,8 @@ struct AiCoachGroupContent: View {
             if let stored = TrainingAdviceStorage.get(for: record.id, type: .group) {
                 trainingAdvice = stored
             } else {
-                // 如果本地没有缓存，则请求网络
-                await loadTrainingAdvice(for: record)
+                // 已按需求关闭 AI 教练自动请求，避免进入页面时触发服务端智能体调用。
+                // await loadTrainingAdvice(for: record)
             }
         }
     }
@@ -360,52 +363,57 @@ struct AiCoachGroupContent: View {
         // 如果已有建议且不强制刷新，则直接返回
         if trainingAdvice != nil && !forceRefresh { return }
         
-        isLoadingAdvice = true
-        adviceError = nil
-        
-        // 创建一个后台任务来处理请求
-        Task.detached(priority: .background) {
-            do {
-                // 为组记录创建训练数据
-                let trainingData = cozeService.prepareGroupTrainingData(record: record)
-                
-                let advice = try await cozeService.getTrainingAdvice(data: trainingData)
-                
-                // 检查是否包含错误信息
-                if advice.performanceLevel.contains("很抱歉") || 
-                   advice.performanceLevel.contains("出现错误") || 
-                   advice.performanceLevel.contains("无法为你提供") {
-                    // 如果包含错误信息，抛出异常
-                    throw NSError(domain: "AICoach", code: 1001, 
-                                 userInfo: [NSLocalizedDescriptionKey: "似乎教练有点忙，暂时无法给出建议"])
-                }
-                
-                let adviceWithMeta = TrainingAdvice(
-                    performanceLevel: advice.performanceLevel,
-                    issues: advice.issues,
-                    suggestions: advice.suggestions,
-                    improvements: advice.improvements,
-                    recordId: record.id,
-                    recordType: .group,
-                    timestamp: Date()
-                )
-                
-                // 保存到本地
-                TrainingAdviceStorage.save(adviceWithMeta)
-                
-                // 更新UI状态
-                await MainActor.run {
-                    trainingAdvice = adviceWithMeta
-                    isLoadingAdvice = false
-                }
-            } catch {
-                // 更新UI状态
-                await MainActor.run {
-                    adviceError = error
-                    isLoadingAdvice = false
-                }
-            }
+        await MainActor.run {
+            isLoadingAdvice = false
+            adviceError = NSError(
+                domain: "AICoach",
+                code: 1002,
+                userInfo: [NSLocalizedDescriptionKey: "AI教练功能已关闭"]
+            )
         }
+
+        // 已按需求关闭服务端 AI 教练请求，保留原逻辑注释以便后续恢复。
+        // isLoadingAdvice = true
+        // adviceError = nil
+        //
+        // Task.detached(priority: .background) {
+        //     do {
+        //         let trainingData = cozeService.prepareGroupTrainingData(record: record)
+        //         let advice = try await cozeService.getTrainingAdvice(data: trainingData)
+        //
+        //         if advice.performanceLevel.contains("很抱歉") ||
+        //            advice.performanceLevel.contains("出现错误") ||
+        //            advice.performanceLevel.contains("无法为你提供") {
+        //             throw NSError(
+        //                 domain: "AICoach",
+        //                 code: 1001,
+        //                 userInfo: [NSLocalizedDescriptionKey: "似乎教练有点忙，暂时无法给出建议"]
+        //             )
+        //         }
+        //
+        //         let adviceWithMeta = TrainingAdvice(
+        //             performanceLevel: advice.performanceLevel,
+        //             issues: advice.issues,
+        //             suggestions: advice.suggestions,
+        //             improvements: advice.improvements,
+        //             recordId: record.id,
+        //             recordType: .group,
+        //             timestamp: Date()
+        //         )
+        //
+        //         TrainingAdviceStorage.save(adviceWithMeta)
+        //
+        //         await MainActor.run {
+        //             trainingAdvice = adviceWithMeta
+        //             isLoadingAdvice = false
+        //         }
+        //     } catch {
+        //         await MainActor.run {
+        //             adviceError = error
+        //             isLoadingAdvice = false
+        //         }
+        //     }
+        // }
     }
 }
 

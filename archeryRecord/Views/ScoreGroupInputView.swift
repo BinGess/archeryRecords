@@ -9,7 +9,9 @@ enum InputMode {
 struct ScoreGroupInputView: View {
     
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.revealAppTabBar) private var revealAppTabBar
     @EnvironmentObject private var archeryStore: ArcheryStore
+    @EnvironmentObject private var purchaseManager: PurchaseManager
     
     // 编辑模式相关
     private let editingRecord: ArcheryGroupRecord?
@@ -25,6 +27,21 @@ struct ScoreGroupInputView: View {
         _selectedBowType = State(initialValue: lastOptions.bowType)
         _selectedDistance = State(initialValue: lastOptions.distance)
         _selectedTarget = State(initialValue: lastOptions.targetType)
+    }
+
+    init(
+        prefillBowType bowType: String,
+        distance: String,
+        targetType: String,
+        numberOfGroups: Int,
+        arrowsPerGroup: Int
+    ) {
+        self.editingRecord = nil
+        _selectedBowType = State(initialValue: bowType)
+        _selectedDistance = State(initialValue: distance)
+        _selectedTarget = State(initialValue: targetType)
+        _numberOfGroups = State(initialValue: numberOfGroups)
+        _arrowsPerGroup = State(initialValue: arrowsPerGroup)
     }
     
     init(editingRecord: ArcheryGroupRecord) {
@@ -51,12 +68,14 @@ struct ScoreGroupInputView: View {
     @State private var selectedScoreIndex = 0
     @State private var inputMode: InputMode = .keyboard
     @State private var groupArrowHits: [[ArrowHit]] = []
+    @State private var completedRecord: ArcheryGroupRecord?
     
     // 选项面板
     @State private var showingBowTypeSheet = false
     @State private var showingDistanceSheet = false
     @State private var showingTargetSheet = false
     @State private var showingMatchTypeSheet = false
+    @State private var activePaywallFeature: ProFeature?
     
     var totalArrows: Int {
         numberOfGroups * arrowsPerGroup
@@ -71,29 +90,11 @@ struct ScoreGroupInputView: View {
                         // 基本选项卡片
                         VStack(alignment: .leading, spacing: 0) {
                             HStack {
-                                Text("基本选项")
+                                Text(L10n.GroupInput.basicOptions)
                                     .font(.headline)
                                 Spacer()
                                 
-                                // 输入模式切换开关
-                                HStack(spacing: 8) {
-                                    Image(systemName: inputMode == .keyboard ? "keyboard" : "target")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.purple)
-                                    
-                                    Toggle("", isOn: Binding(
-                                        get: { inputMode == .visualTarget },
-                                        set: { newValue in
-                                            inputMode = newValue ? .visualTarget : .keyboard
-                                        }
-                                    ))
-                                    .toggleStyle(SwitchToggleStyle(tint: .purple))
-                                    .scaleEffect(0.8)
-                                    
-                                    Text(inputMode == .visualTarget ? "靶面" : "键盘")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.gray)
-                                }
+                                inputModeToggle
                             }
                             .padding(.horizontal, 16)
                             .padding(.top, 16)
@@ -108,10 +109,10 @@ struct ScoreGroupInputView: View {
                                         VStack(spacing: 8) {
                                             Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
                                                 .font(.system(size: 24))
-                                                .foregroundColor(.purple)
+                                                .foregroundColor(SharedStyles.secondaryColor)
                                             Text(selectedBowType)
-                                                .font(.system(size: 14))
-                                                .foregroundColor(.black)
+                                                .font(SharedStyles.Text.caption)
+                                                .foregroundColor(SharedStyles.primaryTextColor)
                                         }
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 8)
@@ -119,17 +120,17 @@ struct ScoreGroupInputView: View {
                                     
                                     Divider()
                                         .frame(width: 1, height: 40)
-                                        .background(Color.gray.opacity(0.2))
+                                        .background(SharedStyles.tertiaryTextColor.opacity(0.18))
                                     
                                     // 距离按钮
                                     Button(action: { showingDistanceSheet = true }) {
                                         VStack(spacing: 8) {
                                             Image(systemName: "triangle")
                                                 .font(.system(size: 24))
-                                                .foregroundColor(.purple)
+                                                .foregroundColor(SharedStyles.secondaryColor)
                                             Text(selectedDistance)
-                                                .font(.system(size: 14))
-                                                .foregroundColor(.black)
+                                                .font(SharedStyles.Text.caption)
+                                                .foregroundColor(SharedStyles.primaryTextColor)
                                         }
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 16)
@@ -138,7 +139,7 @@ struct ScoreGroupInputView: View {
                                 
                                 Divider()
                                     .frame(height: 1)
-                                    .background(Color.gray.opacity(0.2))
+                                    .background(SharedStyles.tertiaryTextColor.opacity(0.18))
                                 
                                 // 第二行
                                 HStack(spacing: 0) {
@@ -147,10 +148,10 @@ struct ScoreGroupInputView: View {
                                         VStack(spacing: 8) {
                                             Image(systemName: "target")
                                                 .font(.system(size: 24))
-                                                .foregroundColor(.purple)
-                                            Text(selectedTarget)
-                                                .font(.system(size: 14))
-                                                .foregroundColor(.black)
+                                                .foregroundColor(SharedStyles.secondaryColor)
+                                            Text(TargetTypeDisplay.primaryTitle(for: selectedTarget))
+                                                .font(SharedStyles.Text.caption)
+                                                .foregroundColor(SharedStyles.primaryTextColor)
                                         }
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 16)
@@ -158,17 +159,17 @@ struct ScoreGroupInputView: View {
                                     
                                     Divider()
                                         .frame(width: 1, height: 40)
-                                        .background(Color.gray.opacity(0.2))
+                                        .background(SharedStyles.tertiaryTextColor.opacity(0.18))
                                     
                                     // 比赛类型按钮
                                     Button(action: { showingMatchTypeSheet = true }) {
                                         VStack(spacing: 8) {
                                             Image(systemName: "target")
                                                 .font(.system(size: 24))
-                                                .foregroundColor(.purple)
-                                            Text("\(numberOfGroups)组/每组\(arrowsPerGroup)支/共\(totalArrows)箭")
-                                                .font(.system(size: 14))
-                                                .foregroundColor(.black)
+                                                .foregroundColor(SharedStyles.secondaryColor)
+                                            Text(L10n.Match.type(groups: numberOfGroups, arrowsPerGroup: arrowsPerGroup, totalArrows: totalArrows))
+                                                .font(SharedStyles.Text.caption)
+                                                .foregroundColor(SharedStyles.primaryTextColor)
                                         }
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 16)
@@ -176,9 +177,7 @@ struct ScoreGroupInputView: View {
                                 }
                             }
                         }
-                        .background(Color.white)
-                        .cornerRadius(12)
-                        .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                        .clayCard(tint: SharedStyles.secondaryColor)
                         .padding(.horizontal, 16)
                         
                         // 成绩录入卡片 - 为每个组创建一个卡片
@@ -204,7 +203,7 @@ struct ScoreGroupInputView: View {
                             .id("group_\(groupIndex)")
                         }
                         
-
+                        
                     }
                     .padding(.vertical, 16)
                 }
@@ -222,7 +221,7 @@ struct ScoreGroupInputView: View {
                     }
                 }
             }
-            .background(SharedStyles.groupBackgroundColor)
+            .vibrantCanvasBackground()
             
             // 底部输入区域 - 固定在底部
             if inputMode == .keyboard {
@@ -234,27 +233,29 @@ struct ScoreGroupInputView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
-        .toolbarBackground(Color.white, for: .navigationBar)
+        .toolbarBackground(SharedStyles.backgroundColor, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text("记一场")
-                    .font(.headline)
-                    .foregroundColor(.black)
+                Text(L10n.Nav.groupRecord)
+                    .font(SharedStyles.Text.title)
+                    .foregroundColor(SharedStyles.primaryTextColor)
             }
             ToolbarItem(placement: .navigationBarLeading) {
                 Button(action: {
+                    revealAppTabBar?()
                     dismiss()
                 }) {
                     HStack {
                         Image(systemName: "chevron.left")
                         Text(L10n.Common.back)
                     }
-                    .foregroundColor(.black)
+                    .foregroundColor(SharedStyles.primaryTextColor)
                 }
             }
         }
+        .hiddenAppTabBar()
         .onAppear {
             // 只有在非编辑模式下才初始化空的分数数组
             if editingRecord == nil {
@@ -263,62 +264,62 @@ struct ScoreGroupInputView: View {
         }
         .sheet(isPresented: $showingBowTypeSheet) {
             SelectionSheet(title: L10n.GroupInput.selectBowType,
-                         options: L10n.Options.BowType.all,
-                         selectedOption: $selectedBowType,
-                         isFromScoreInput: false)
+                           options: L10n.Options.BowType.all,
+                           selectedOption: $selectedBowType,
+                           isFromScoreInput: false)
         }
         .sheet(isPresented: $showingMatchTypeSheet) {
             NavigationView {
                 Form {
-                    Section(header: Text("预设比赛类型")) {
-                        Button("室内18米（10组/每组3支）") {
+                    Section(header: Text(L10n.tr("group_input_preset_section_title"))) {
+                        Button(L10n.tr("group_input_preset_indoor_18m")) {
                             numberOfGroups = 10
                             arrowsPerGroup = 3
                             showingMatchTypeSheet = false
                         }
                         
-                        Button("室外70米（12组/每组6支）") {
+                        Button(L10n.tr("group_input_preset_outdoor_70m")) {
                             numberOfGroups = 12
                             arrowsPerGroup = 6
                             showingMatchTypeSheet = false
                         }
                         
-                        Button("室内25米（12组/每组3支）") {
+                        Button(L10n.tr("group_input_preset_indoor_25m")) {
                             numberOfGroups = 12
                             arrowsPerGroup = 3
                             showingMatchTypeSheet = false
                         }
                     }
                     
-                    Section(header: Text("自定义设置")) {
+                    Section(header: Text(L10n.tr("group_input_custom_section_title"))) {
                         Stepper(value: $numberOfGroups, in: 1...30) {
                             HStack {
-                                Text("组数")
+                                Text(L10n.GroupInput.numberOfGroups)
                                 Spacer()
-                                Text("\(numberOfGroups)组")
-                                    .foregroundColor(.purple)
+                                Text(L10n.tr("group_input_number_of_groups_value", numberOfGroups))
+                                    .foregroundColor(SharedStyles.secondaryColor)
                             }
                         }
                         
                         Stepper(value: $arrowsPerGroup, in: 1...12) {
                             HStack {
-                                Text("每组箭数")
+                                Text(L10n.GroupInput.arrowsPerGroup)
                                 Spacer()
-                                Text("\(arrowsPerGroup)支")
-                                    .foregroundColor(.purple)
+                                Text(L10n.tr("group_input_arrows_per_group_value", arrowsPerGroup))
+                                    .foregroundColor(SharedStyles.secondaryColor)
                             }
                         }
                         
-                        Text("总计: \(totalArrows)支箭")
+                        Text(L10n.tr("group_input_total_arrows", totalArrows))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
                 }
-                .navigationTitle("比赛类型设置")
+                .navigationTitle(L10n.tr("group_input_match_settings_title"))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("完成") {
+                        Button(L10n.Common.done) {
                             showingMatchTypeSheet = false
                             // 重新初始化分数数组以匹配新的组数和箭数
                             // 在编辑模式下不要重新初始化，保持原有数据
@@ -332,15 +333,28 @@ struct ScoreGroupInputView: View {
         }
         .sheet(isPresented: $showingDistanceSheet) {
             SelectionSheet(title: L10n.GroupInput.selectDistance,
-                         options: L10n.Options.Distance.all,
-                         selectedOption: $selectedDistance,
-                         isFromScoreInput: false)
+                           options: L10n.Options.Distance.all,
+                           selectedOption: $selectedDistance,
+                           isFromScoreInput: false)
         }
         .sheet(isPresented: $showingTargetSheet) {
             SelectionSheet(title: L10n.GroupInput.selectTargetType,
-                         options: L10n.Options.TargetType.all,
-                         selectedOption: $selectedTarget,
-                         isFromScoreInput: false)
+                           options: L10n.Options.TargetType.all,
+                           selectedOption: $selectedTarget,
+                           isFromScoreInput: false)
+        }
+        .sheet(item: $activePaywallFeature) { feature in
+            ProPaywallView {
+                inputMode = .visualTarget
+            }
+            .environmentObject(purchaseManager)
+        }
+        .navigationDestination(item: $completedRecord) { record in
+            GroupRecordCompletionView(
+                record: record,
+                onDone: closeInputFlow
+            )
+            .environmentObject(archeryStore)
         }
     }
     
@@ -365,6 +379,76 @@ struct ScoreGroupInputView: View {
             }
         }
     }
+
+    private func handleVisualModeToggleChange(_ enabled: Bool) {
+        if enabled && !purchaseManager.isProUnlocked {
+            activePaywallFeature = .visualTargetInput
+            return
+        }
+
+        inputMode = enabled ? .visualTarget : .keyboard
+    }
+
+    private var inputModeToggle: some View {
+        HStack(spacing: 4) {
+            inputModeButton(
+                title: L10n.CommonAction.visualTarget,
+                systemImage: "target",
+                isActive: inputMode == .visualTarget,
+                showsProBadge: !purchaseManager.isProUnlocked
+            ) {
+                handleVisualModeToggleChange(true)
+            }
+
+            inputModeButton(
+                title: L10n.CommonAction.keyboard,
+                systemImage: "keyboard",
+                isActive: inputMode == .keyboard,
+                showsProBadge: false
+            ) {
+                inputMode = .keyboard
+            }
+        }
+        .padding(4)
+        .background(TargetInputPalette.track)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.white.opacity(0.65), lineWidth: 1)
+        )
+    }
+
+    private func inputModeButton(
+        title: String,
+        systemImage: String,
+        isActive: Bool,
+        showsProBadge: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 12, weight: .semibold))
+                Text(title)
+                    .font(.system(size: 12, weight: .bold))
+                    .lineLimit(1)
+
+                if showsProBadge {
+                    Image(systemName: "crown.fill")
+                        .font(.system(size: 9, weight: .black))
+                        .foregroundStyle(Color(red: 0.92, green: 0.72, blue: 0.12))
+                }
+            }
+            .foregroundColor(isActive ? TargetInputPalette.primary : .secondary)
+            .frame(minWidth: showsProBadge ? 82 : 70)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(isActive ? SharedStyles.elevatedSurfaceColor : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 9))
+            .shadow(color: isActive ? SharedStyles.Shadow.light : .clear, radius: 6, x: 0, y: 2)
+        }
+        .buttonStyle(.plain)
+    }
     
     private func getTargetFaceType(from targetString: String) -> TargetFaceType {
         switch targetString {
@@ -386,7 +470,7 @@ struct ScoreGroupInputView: View {
             return .standard122cm
         }
     }
-
+    
     private var bottomTargetInputView: some View {
         VStack(spacing: 0) {
             // 靶面输入区域
@@ -409,95 +493,89 @@ struct ScoreGroupInputView: View {
             // 底部按钮区域
             HStack(spacing: 12) {
                 Button(action: handleScoreDelete) {
-                    Text("移除成绩")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.gray)
+                    Text(L10n.tr("group_input_remove_score"))
+                        .font(SharedStyles.Text.bodyEmphasis)
+                        .foregroundColor(SharedStyles.secondaryTextColor)
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
-                .background(Color.white)
-                .cornerRadius(8)
+                .clayCard(tint: SharedStyles.Accent.sky, radius: 16)
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.purple, lineWidth: 1)
+                        .stroke(SharedStyles.secondaryColor.opacity(0.55), lineWidth: 1)
                 )
                 
                 Button(action: saveRecord) {
-                    Text("完成成绩")
-                        .font(.system(size: 16, weight: .medium))
+                    Text(L10n.tr("group_input_complete_score"))
+                        .font(SharedStyles.Text.bodyEmphasis)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
-                .background(Color.purple)
-                .cornerRadius(8)
+                .blockSurface(colors: SharedStyles.GradientSet.violet, radius: 16)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
         }
-        .background(Color.white)
-        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: -3)
+        .clayCard(tint: SharedStyles.secondaryColor, radius: 24)
     }
     
     private var bottomKeyboardView: some View {
         HStack(spacing: 8) {
-                // 左侧数字键盘
-                VStack(spacing: 6) {
-                    // 第一行按钮
-                    HStack(spacing: 6) {
-                        GroupCircleScoreButton(score: "X", onTap: { handleScoreInput("X") })
-                        GroupCircleScoreButton(score: "10", onTap: { handleScoreInput("10") })
-                        GroupCircleScoreButton(score: "9", onTap: { handleScoreInput("9") })
-                        GroupCircleScoreButton(score: "8", onTap: { handleScoreInput("8") })
-                    }
-                    
-                    // 第二行按钮
-                    HStack(spacing: 6) {
-                        GroupCircleScoreButton(score: "7", onTap: { handleScoreInput("7") })
-                        GroupCircleScoreButton(score: "6", onTap: { handleScoreInput("6") })
-                        GroupCircleScoreButton(score: "5", onTap: { handleScoreInput("5") })
-                        GroupCircleScoreButton(score: "4", onTap: { handleScoreInput("4") })
-                    }
-                    
-                    // 第三行按钮
-                    HStack(spacing: 6) {
-                        GroupCircleScoreButton(score: "3", onTap: { handleScoreInput("3") })
-                        GroupCircleScoreButton(score: "2", onTap: { handleScoreInput("2") })
-                        GroupCircleScoreButton(score: "1", onTap: { handleScoreInput("1") })
-                        GroupCircleScoreButton(score: "M", isSpecial: true, onTap: { handleScoreInput("M") })
-                    }
+            // 左侧数字键盘
+            VStack(spacing: 6) {
+                // 第一行按钮
+                HStack(spacing: 6) {
+                    GroupCircleScoreButton(score: "X", onTap: { handleScoreInput("X") })
+                    GroupCircleScoreButton(score: "10", onTap: { handleScoreInput("10") })
+                    GroupCircleScoreButton(score: "9", onTap: { handleScoreInput("9") })
+                    GroupCircleScoreButton(score: "8", onTap: { handleScoreInput("8") })
                 }
-                .frame(maxWidth: .infinity)
                 
-                // 右侧操作按钮
-                VStack(spacing: 6) {
-                    Button(action: handleScoreDelete) {
-                        Text("移除")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.gray)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
-                    .frame(width: 68, height: 72)
-                    .background(Color.white)
-                    .cornerRadius(8)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.purple, lineWidth: 1)
-                    )
-                    
-                    Button(action: saveRecord) {
-                        Text("保存")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
-                    .frame(width: 68, height: 72)
-                    .background(Color.purple)
-                    .cornerRadius(8)
+                // 第二行按钮
+                HStack(spacing: 6) {
+                    GroupCircleScoreButton(score: "7", onTap: { handleScoreInput("7") })
+                    GroupCircleScoreButton(score: "6", onTap: { handleScoreInput("6") })
+                    GroupCircleScoreButton(score: "5", onTap: { handleScoreInput("5") })
+                    GroupCircleScoreButton(score: "4", onTap: { handleScoreInput("4") })
+                }
+                
+                // 第三行按钮
+                HStack(spacing: 6) {
+                    GroupCircleScoreButton(score: "3", onTap: { handleScoreInput("3") })
+                    GroupCircleScoreButton(score: "2", onTap: { handleScoreInput("2") })
+                    GroupCircleScoreButton(score: "1", onTap: { handleScoreInput("1") })
+                    GroupCircleScoreButton(score: "M", isSpecial: true, onTap: { handleScoreInput("M") })
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 12)
-            .background(Color.white)
-            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: -3)
+            .frame(maxWidth: .infinity)
+            
+            // 右侧操作按钮
+            VStack(spacing: 6) {
+                Button(action: handleScoreDelete) {
+                    Text(L10n.CommonAction.remove)
+                        .font(SharedStyles.Text.bodyEmphasis)
+                        .foregroundColor(SharedStyles.secondaryTextColor)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .frame(width: 68, height: 72)
+                .clayCard(tint: SharedStyles.Accent.sky, radius: 16)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(SharedStyles.secondaryColor.opacity(0.55), lineWidth: 1)
+                )
+                
+                Button(action: saveRecord) {
+                    Text(L10n.Common.save)
+                        .font(SharedStyles.Text.bodyEmphasis)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .frame(width: 68, height: 72)
+                .blockSurface(colors: SharedStyles.GradientSet.violet, radius: 16)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 12)
+        .clayCard(tint: SharedStyles.secondaryColor, radius: 24)
     }
     
     private func handleScoreInput(_ score: String) {
@@ -540,6 +618,12 @@ struct ScoreGroupInputView: View {
             
             // 更新记录
             archeryStore.updateGroupRecord(updatedRecord)
+            archeryStore.saveLastUsedOptions(
+                bowType: selectedBowType,
+                distance: selectedDistance,
+                targetType: selectedTarget
+            )
+            closeInputFlow()
         } else {
             // 新建模式：创建新记录
             let record = ArcheryGroupRecord(
@@ -556,16 +640,19 @@ struct ScoreGroupInputView: View {
             
             // 保存记录
             archeryStore.addGroupRecord(record)
+            archeryStore.saveLastUsedOptions(
+                bowType: selectedBowType,
+                distance: selectedDistance,
+                targetType: selectedTarget
+            )
+            completedRecord = record
         }
-        
-        // 保存最后使用的选项
-        archeryStore.saveLastUsedOptions(
-            bowType: selectedBowType,
-            distance: selectedDistance,
-            targetType: selectedTarget
-        )
-        
-        // 返回上一级
+
+    }
+
+    private func closeInputFlow() {
+        completedRecord = nil
+        revealAppTabBar?()
         dismiss()
     }
     
@@ -626,86 +713,106 @@ struct ScoreGroupInputView: View {
         }
         // 如果已经是最后一组的最后一支箭，保持当前位置
     }
-
-// 组分数卡片
-struct GroupScoreCard: View {
-    let groupIndex: Int
-    let groupScores: [String]
-    @Binding var selectedGroupIndex: Int
-    @Binding var selectedScoreIndex: Int
-    let inputMode: InputMode
-    let targetFaceType: TargetFaceType
-    @Binding var groupArrowHits: [ArrowHit]
-    let onScoreSelected: (Int) -> Void
-    let onVisualTargetInput: (Int, Int, ArrowHit) -> Void
-    let onAddGroup: () -> Void
-    let isLastGroup: Bool  // 新增属性，标识是否为最后一组
     
-    var groupScore: Int {
-        groupScores.reduce(0) { sum, score in
-            if score == "X" { return sum + 10 }
-            if score == "M" { return sum + 0 }
-            return sum + (Int(score) ?? 0)
+    // 组分数卡片
+    struct GroupScoreCard: View {
+        let groupIndex: Int
+        let groupScores: [String]
+        @Binding var selectedGroupIndex: Int
+        @Binding var selectedScoreIndex: Int
+        let inputMode: InputMode
+        let targetFaceType: TargetFaceType
+        @Binding var groupArrowHits: [ArrowHit]
+        let onScoreSelected: (Int) -> Void
+        let onVisualTargetInput: (Int, Int, ArrowHit) -> Void
+        let onAddGroup: () -> Void
+        let isLastGroup: Bool  // 新增属性，标识是否为最后一组
+        
+        var groupScore: Int {
+            groupScores.reduce(0) { sum, score in
+                if score == "X" { return sum + 10 }
+                if score == "M" { return sum + 0 }
+                return sum + (Int(score) ?? 0)
+            }
+        }
+        
+        var body: some View {
+            GroupScoreCardContent(
+                groupIndex: groupIndex,
+                groupScores: groupScores,
+                selectedGroupIndex: $selectedGroupIndex,
+                selectedScoreIndex: $selectedScoreIndex,
+                inputMode: inputMode,
+                targetFaceType: targetFaceType,
+                groupArrowHits: $groupArrowHits,
+                onScoreSelected: onScoreSelected,
+                onVisualTargetInput: onVisualTargetInput,
+                onAddGroup: onAddGroup,
+                isLastGroup: isLastGroup,
+                groupScore: groupScore
+            )
         }
     }
-
-    var body: some View {
-        GroupScoreCardContent(
-            groupIndex: groupIndex,
-            groupScores: groupScores,
-            selectedGroupIndex: $selectedGroupIndex,
-            selectedScoreIndex: $selectedScoreIndex,
-            inputMode: inputMode,
-            targetFaceType: targetFaceType,
-            groupArrowHits: $groupArrowHits,
-            onScoreSelected: onScoreSelected,
-            onVisualTargetInput: onVisualTargetInput,
-            onAddGroup: onAddGroup,
-            isLastGroup: isLastGroup,
-            groupScore: groupScore
-        )
+    
+    // 组圆角矩形分数按钮
+    struct GroupCircleScoreButton: View {
+        let score: String
+        let isSpecial: Bool
+        let onTap: () -> Void
+        
+        init(score: String, isSpecial: Bool = false, onTap: @escaping () -> Void) {
+            self.score = score
+            self.isSpecial = isSpecial
+            self.onTap = onTap
+        }
+        
+        // 判断是否为高分按钮（X、10、9）
+        private var isHighScore: Bool {
+            return score == "X" || score == "10" || score == "9"
+        }
+        
+        var body: some View {
+            Button(action: onTap) {
+                Text(score)
+                    .font(SharedStyles.Text.bodyEmphasis)
+                    .foregroundColor(isSpecial ? .white : SharedStyles.primaryTextColor)
+            }
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(isSpecial ? SharedStyles.Accent.coral : SharedStyles.elevatedSurfaceColor)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(
+                        isSpecial ? SharedStyles.Accent.coral : (isHighScore ? SharedStyles.secondaryColor : SharedStyles.primaryTextColor.opacity(0.28)),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: SharedStyles.Shadow.highlight, radius: 8, x: -3, y: -3)
+            .shadow(color: SharedStyles.Shadow.light, radius: 10, x: 5, y: 6)
+        }
+    }
+    
+    #Preview {
+        NavigationStack {
+            ScoreGroupInputView()
+                .environmentObject(ArcheryStore())
+                .environmentObject(PurchaseManager())
+                .environmentObject(TabBarManager())
+        }
     }
 }
 
-// 组圆角矩形分数按钮
-struct GroupCircleScoreButton: View {
-    let score: String
-    let isSpecial: Bool
-    let onTap: () -> Void
-    
-    init(score: String, isSpecial: Bool = false, onTap: @escaping () -> Void) {
-        self.score = score
-        self.isSpecial = isSpecial
-        self.onTap = onTap
-    }
-    
-    // 判断是否为高分按钮（X、10、9）
-    private var isHighScore: Bool {
-        return score == "X" || score == "10" || score == "9"
-    }
-    
-    var body: some View {
-        Button(action: onTap) {
-            Text(score)
-                .font(.system(size: 18, weight: .medium))
-                .foregroundColor(isSpecial ? .white : .black)
-        }
-        .frame(maxWidth: .infinity, minHeight: 48)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isSpecial ? Color.red : Color.white)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(isSpecial ? Color.red : (isHighScore ? Color.purple : Color.black), lineWidth: 1)
-        )
-    }
-    }
-}
-
-#Preview {
-    NavigationStack {
-        ScoreGroupInputView()
-            .environmentObject(ArcheryStore())
-    }
+private enum TargetInputPalette {
+    static let primary = SharedStyles.Accent.teal
+    static let track = Color.white.opacity(0.52)
+    static let border = SharedStyles.tertiaryTextColor.opacity(0.18)
+    static let text = SharedStyles.primaryTextColor
+    static let mutedText = SharedStyles.secondaryTextColor
+    static let paper = SharedStyles.elevatedSurfaceColor
+    static let gold = SharedStyles.Accent.lemon
+    static let red = SharedStyles.Accent.coral
+    static let blue = SharedStyles.Accent.sky
+    static let black = SharedStyles.primaryTextColor
 }

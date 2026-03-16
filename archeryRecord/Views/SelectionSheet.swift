@@ -6,6 +6,10 @@ struct SelectionSheet: View {
     let options: [String]
     @Binding var selectedOption: String
     let isFromScoreInput: Bool // 添加标识来源的参数
+
+    private var accentColor: Color {
+        isFromScoreInput ? SharedStyles.primaryColor : SharedStyles.secondaryColor
+    }
     
     var body: some View {
         NavigationView {
@@ -16,17 +20,31 @@ struct SelectionSheet: View {
                         dismiss()
                     }) {
                         HStack {
-                            Text(option)
+                            if TargetTypeDisplay.isKnownTargetType(option) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(TargetTypeDisplay.primaryTitle(for: option))
+                                        .sharedTextStyle(SharedStyles.Text.bodyEmphasis, color: SharedStyles.primaryTextColor)
+
+                                    if let subtitle = TargetTypeDisplay.subtitle(for: option) {
+                                        Text(subtitle)
+                                            .sharedTextStyle(SharedStyles.Text.footnote, color: SharedStyles.secondaryTextColor)
+                                    }
+                                }
+                            } else {
+                                Text(option)
+                            }
                             Spacer()
                             if option == selectedOption {
                                 Image(systemName: "checkmark")
-                                    .foregroundColor(isFromScoreInput ? .orange : .purple)
+                                    .foregroundColor(accentColor)
                             }
                         }
                     }
-                    .foregroundColor(.primary)
+                    .foregroundColor(SharedStyles.primaryTextColor)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(SharedStyles.backgroundColor)
             #if os(iOS)
             .listStyle(InsetGroupedListStyle())
             .navigationBarTitleDisplayMode(.inline)
@@ -37,8 +55,8 @@ struct SelectionSheet: View {
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text(title)
-                        .font(.headline)
-                        .foregroundColor(.white)
+                        .font(SharedStyles.Text.title)
+                        .foregroundColor(SharedStyles.primaryTextColor)
                 }
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
@@ -48,20 +66,20 @@ struct SelectionSheet: View {
                             Image(systemName: "chevron.left")
                             Text(L10n.Common.back)
                         }
-                        .foregroundColor(.white)
+                        .foregroundColor(SharedStyles.primaryTextColor)
                     }
                 }
             }
             #if os(iOS)
-            .toolbarBackground(isFromScoreInput ? Color.orange : Color.purple, for: .navigationBar)
+            .toolbarBackground(SharedStyles.backgroundColor, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             #endif
             #else
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text(title)
-                        .font(.headline)
-                        .foregroundColor(.white)
+                        .font(SharedStyles.Text.title)
+                        .foregroundColor(SharedStyles.primaryTextColor)
                 }
                 ToolbarItem(placement: .automatic) {
                     Button(action: {
@@ -71,7 +89,7 @@ struct SelectionSheet: View {
                             Image(systemName: "chevron.left")
                             Text(L10n.Common.back)
                         }
-                        .foregroundColor(.white)
+                        .foregroundColor(SharedStyles.primaryTextColor)
                     }
                 }
             }
@@ -82,9 +100,9 @@ struct SelectionSheet: View {
 
 #Preview {
     SelectionSheet(
-        title: "选择弓种",
-        options: ["复合弓", "反曲弓", "传统弓","光弓","美猎"],
-        selectedOption: .constant("复合弓"),
+        title: L10n.GroupInput.selectBowType,
+        options: L10n.Options.BowType.all,
+        selectedOption: .constant(L10n.Options.BowType.compound),
         isFromScoreInput: true
     )
 }

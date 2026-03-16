@@ -23,7 +23,15 @@ struct AccuracyStats {
     let three: Double
     let two: Double
     let one: Double
-    
+
+    var totalHits: Double {
+        tens + nines + eights + sevens + sixs + fives + four + three + two + one
+    }
+
+    var topThreeRate: Double {
+        guard totalHits > 0 else { return 0 }
+        return (tens + nines + eights) / totalHits * 100
+    }
 }
 
 struct StabilityStats {
@@ -57,26 +65,188 @@ struct ArcheryAnalytics {
     let totalArrows: Int
 }
 
+struct AggregateAccuracySummary {
+    let averageScore: Double
+    let tenRingRate: Double
+    let spreadRadius: Double
+    let groupTightness: String
+    let accuracyGrade: String
+    let xRingCount: Int
+    let tenRingCount: Int
+    let nineRingCount: Int
+}
+
+enum TrendMomentum {
+    case rising
+    case stable
+    case falling
+
+    var localizedLabel: String {
+        switch self {
+        case .rising:
+            return L10n.tr("analysis_momentum_rising")
+        case .stable:
+            return L10n.tr("analysis_momentum_stable")
+        case .falling:
+            return L10n.tr("analysis_momentum_falling")
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .rising:
+            return "arrow.up.right"
+        case .stable:
+            return "arrow.left.and.right"
+        case .falling:
+            return "arrow.down.right"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .rising:
+            return .green
+        case .stable:
+            return .orange
+        case .falling:
+            return .red
+        }
+    }
+}
+
+struct ScoreTrendSummary {
+    let points: [ScoreData]
+    let rollingAveragePoints: [ScoreData]
+    let overallAverage: Double
+    let latestAverage: Double
+    let recentAverage: Double
+    let baselineAverage: Double
+    let recentChangePercent: Double
+    let bestAverage: Double
+    let sessionCount: Int
+    let recentWindowCount: Int
+    let baselineWindowCount: Int
+    let momentum: TrendMomentum
+    let insight: TrendInsight
+
+    var hasEnoughHistory: Bool {
+        sessionCount > 1 && baselineWindowCount > 0
+    }
+}
+
+struct TrendInsight {
+    let title: String
+    let message: String
+}
+
+enum ImpactDirection: String {
+    case centered
+    case upperLeft
+    case upperRight
+    case lowerLeft
+    case lowerRight
+
+    var localizedLabel: String {
+        switch self {
+        case .centered:
+            return L10n.tr("analysis_direction_centered")
+        case .upperLeft:
+            return L10n.tr("analysis_direction_upper_left")
+        case .upperRight:
+            return L10n.tr("analysis_direction_upper_right")
+        case .lowerLeft:
+            return L10n.tr("analysis_direction_lower_left")
+        case .lowerRight:
+            return L10n.tr("analysis_direction_lower_right")
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .centered:
+            return "scope"
+        case .upperLeft:
+            return "arrow.up.left"
+        case .upperRight:
+            return "arrow.up.right"
+        case .lowerLeft:
+            return "arrow.down.left"
+        case .lowerRight:
+            return "arrow.down.right"
+        }
+    }
+}
+
+struct ImpactPoint: Identifiable {
+    let id: UUID
+    let position: CGPoint
+    let score: Int
+    let ringNumber: Int
+}
+
+struct ImpactQuadrantSummary: Identifiable {
+    let direction: ImpactDirection
+    let count: Int
+    let percentage: Double
+
+    var id: String { direction.rawValue }
+}
+
+struct ImpactInsight: Identifiable {
+    let id: String
+    let symbolName: String
+    let title: String
+    let message: String
+}
+
+struct AnalysisArrowPoint: Identifiable {
+    let id: UUID
+    let offset: CGSize
+    let color: Color
+}
+
+struct ImpactAnalysisSummary {
+    let targetFace: TargetFace?
+    let targetTypeName: String?
+    let scopeDescription: String?
+    let totalHits: Int
+    let groupingRadius95: Double
+    let centerOffset: Double
+    let averageDistanceFromCenter: Double
+    let centroid: CGPoint
+    let hasRealData: Bool
+    let biasDirection: ImpactDirection
+    let dominantQuadrantRate: Double
+    let points: [ImpactPoint]
+    let quadrants: [ImpactQuadrantSummary]
+    let insights: [ImpactInsight]
+
+    var hasData: Bool {
+        totalHits > 0 && !points.isEmpty
+    }
+}
+
 class ScoreAnalytics {
-    static func processScores(records: [ArcheryRecord], groupRecords: [ArcheryGroupRecord], timeRange: Int) -> [ScoreData] {
+    static func filterRecords(records: [ArcheryRecord], groupRecords: [ArcheryGroupRecord], timeRange: Int) -> (records: [ArcheryRecord], groupRecords: [ArcheryGroupRecord]) {
         let calendar = Calendar.current
         let now = Date()
-        
+
         let filteredRecords = records.filter { record in
             switch timeRange {
-            case 0: // 今日
+            case 0:
                 return calendar.isDateInToday(record.date)
-            case 1: // 周
+            case 1:
                 return calendar.isDate(record.date, equalTo: now, toGranularity: .weekOfYear)
-            case 2: // 月
+            case 2:
                 return calendar.isDate(record.date, equalTo: now, toGranularity: .month)
-            case 3: // 年
+            case 3:
                 return calendar.isDate(record.date, equalTo: now, toGranularity: .year)
             default:
-                return false
+                return true
             }
         }
-        
+
         let filteredGroupRecords = groupRecords.filter { record in
             switch timeRange {
             case 0:
@@ -88,31 +258,32 @@ class ScoreAnalytics {
             case 3:
                 return calendar.isDate(record.date, equalTo: now, toGranularity: .year)
             default:
-                return false
+                return true
             }
         }
+
+        return (filteredRecords, filteredGroupRecords)
+    }
+
+    static func processScores(records: [ArcheryRecord], groupRecords: [ArcheryGroupRecord], timeRange: Int) -> [ScoreData] {
+        let filteredData = filterRecords(records: records, groupRecords: groupRecords, timeRange: timeRange)
+        let filteredRecords = filteredData.records
+        let filteredGroupRecords = filteredData.groupRecords
         
         var scoreData: [ScoreData] = []
         
         // 处理单组记录
         for record in filteredRecords {
-            let totalScore = record.scores.compactMap { score -> Int? in
-                if score == "X" { return 10 }
-                if score == "M" { return 0 }
-                return Int(score)
-            }.reduce(0, +)
+            let totalScore = record.scores.map(scoreToInt).reduce(0, +)
             let avgScore = Double(totalScore) / Double(record.scores.count)
             scoreData.append(ScoreData(date: record.date, score: avgScore))
         }
         
         // 处理多组记录
         for record in filteredGroupRecords {
-            let totalScore = record.groupScores.flatMap { $0 }.compactMap { score -> Int? in
-                if score == "X" { return 10 }
-                if score == "M" { return 0 }
-                return Int(score)
-            }.reduce(0, +)
-            let avgScore = Double(totalScore) / Double(record.groupScores.flatMap { $0 }.count)
+            let flattenedScores = record.groupScores.flatMap { $0 }
+            let totalScore = flattenedScores.map(scoreToInt).reduce(0, +)
+            let avgScore = Double(totalScore) / Double(flattenedScores.count)
             scoreData.append(ScoreData(date: record.date, score: avgScore))
         }
         
@@ -120,49 +291,16 @@ class ScoreAnalytics {
     }
     
     static func calculateStabilityData(records: [ArcheryRecord], groupRecords: [ArcheryGroupRecord], timeRange: Int) -> StabilityResult {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        let filteredRecords = records.filter { record in
-            switch timeRange {
-            case 0:
-                return calendar.isDateInToday(record.date)
-            case 1:
-                return calendar.isDate(record.date, equalTo: now, toGranularity: .weekOfYear)
-            case 2:
-                return calendar.isDate(record.date, equalTo: now, toGranularity: .month)
-            case 3:
-                return calendar.isDate(record.date, equalTo: now, toGranularity: .year)
-            default:
-                return false
-            }
-        }
-        
-        let filteredGroupRecords = groupRecords.filter { record in
-            switch timeRange {
-            case 0:
-                return calendar.isDateInToday(record.date)
-            case 1:
-                return calendar.isDate(record.date, equalTo: now, toGranularity: .weekOfYear)
-            case 2:
-                return calendar.isDate(record.date, equalTo: now, toGranularity: .month)
-            case 3:
-                return calendar.isDate(record.date, equalTo: now, toGranularity: .year)
-            default:
-                return false
-            }
-        }
+        let filteredData = filterRecords(records: records, groupRecords: groupRecords, timeRange: timeRange)
+        let filteredRecords = filteredData.records
+        let filteredGroupRecords = filteredData.groupRecords
         
         var stabilityData: [StabilityData] = []
         var allScores: [Int] = []
         
         // 处理单组记录
         for record in filteredRecords {
-            let scores = record.scores.compactMap { score -> Int? in
-                if score == "X" { return 10 }
-                if score == "M" { return 0 }
-                return Int(score)
-            }
+            let scores = record.scores.map(scoreToInt)
             allScores.append(contentsOf: scores)
             
             if !scores.isEmpty {
@@ -175,11 +313,7 @@ class ScoreAnalytics {
         
         // 处理多组记录
         for record in filteredGroupRecords {
-            let scores = record.groupScores.flatMap { $0 }.compactMap { score -> Int? in
-                if score == "X" { return 10 }
-                if score == "M" { return 0 }
-                return Int(score)
-            }
+            let scores = record.groupScores.flatMap { $0 }.map(scoreToInt)
             allScores.append(contentsOf: scores)
             
             if !scores.isEmpty {
@@ -203,116 +337,100 @@ class ScoreAnalytics {
     }
     
     static func calculateAccuracyStats(records: [ArcheryRecord], groupRecords: [ArcheryGroupRecord], timeRange: Int) -> AccuracyStats {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        let filteredRecords = records.filter { record in
-            switch timeRange {
-            case 0:
-                return calendar.isDateInToday(record.date)
-            case 1:
-                return calendar.isDate(record.date, equalTo: now, toGranularity: .weekOfYear)
-            case 2:
-                return calendar.isDate(record.date, equalTo: now, toGranularity: .month)
-            case 3:
-                return calendar.isDate(record.date, equalTo: now, toGranularity: .year)
-            default:
-                return false
-            }
-        }
-        
-        let filteredGroupRecords = groupRecords.filter { record in
-            switch timeRange {
-            case 0:
-                return calendar.isDateInToday(record.date)
-            case 1:
-                return calendar.isDate(record.date, equalTo: now, toGranularity: .weekOfYear)
-            case 2:
-                return calendar.isDate(record.date, equalTo: now, toGranularity: .month)
-            case 3:
-                return calendar.isDate(record.date, equalTo: now, toGranularity: .year)
-            default:
-                return false
-            }
-        }
-        
+        let filteredData = filterRecords(records: records, groupRecords: groupRecords, timeRange: timeRange)
+        return calculateAccuracyStats(records: filteredData.records, groupRecords: filteredData.groupRecords)
+    }
+
+    static func aggregateAccuracySummary(records: [ArcheryRecord], groupRecords: [ArcheryGroupRecord], timeRange: Int) -> AggregateAccuracySummary {
+        let filteredData = filterRecords(records: records, groupRecords: groupRecords, timeRange: timeRange)
+        return makeAggregateAccuracySummary(records: filteredData.records, groupRecords: filteredData.groupRecords)
+    }
+
+    private static func calculateAccuracyStats(records: [ArcheryRecord], groupRecords: [ArcheryGroupRecord]) -> AccuracyStats {
         var scoreCount = [String: Int]() // 使用字典来统计各分数
-        var totalShots = 0
         
         // 处理单组记录
-        for record in filteredRecords {
+        for record in records {
             for score in record.scores {
-                if score == "M" { continue } // 跳过未中靶的情况
-                totalShots += 1
+                if score.uppercased() == "M" { continue }
                 scoreCount[score, default: 0] += 1
             }
         }
         
         // 处理多组记录
-        for record in filteredGroupRecords {
+        for record in groupRecords {
             for group in record.groupScores {
                 for score in group {
-                    if score == "M" { continue } // 跳过未中靶的情况
-                    totalShots += 1
+                    if score.uppercased() == "M" { continue }
                     scoreCount[score, default: 0] += 1
                 }
             }
         }
-        
-        // 打印调试信息
-        print("总射箭数: \(totalShots)")
-        print("分数统计: \(scoreCount)")
-        
-        let totalShotsDouble = Double(totalShots)
-        // 合并X和10的计数
+
         let tensCount = (scoreCount["X"] ?? 0) + (scoreCount["10"] ?? 0)
-    
-        // 确保每个分数区间只计算一次，这里只需要计算每个分数出现的次数，不是要计算比例
-        let stats = AccuracyStats(
-            tens: totalShots == 0 ? 0 : (Double(tensCount)),
-            nines: totalShots == 0 ? 0 : (Double(scoreCount["9"] ?? 0)),
-            eights: totalShots == 0 ? 0 : (Double(scoreCount["8"] ?? 0)),
-            sevens: totalShots == 0 ? 0 : (Double(scoreCount["7"] ?? 0)),
-            sixs: totalShots == 0 ? 0 : (Double(scoreCount["6"] ?? 0)),
-            fives: totalShots == 0 ? 0 : (Double(scoreCount["5"] ?? 0)),
-            four: totalShots == 0 ? 0 : (Double(scoreCount["4"] ?? 0)),
-            three: totalShots == 0 ? 0 : (Double(scoreCount["3"] ?? 0)),
-            two: totalShots == 0 ? 0 : (Double(scoreCount["2"] ?? 0)),
-            one: totalShots == 0 ? 0 : (Double(scoreCount["1"] ?? 0))
+
+        return AccuracyStats(
+            tens: Double(tensCount),
+            nines: Double(scoreCount["9"] ?? 0),
+            eights: Double(scoreCount["8"] ?? 0),
+            sevens: Double(scoreCount["7"] ?? 0),
+            sixs: Double(scoreCount["6"] ?? 0),
+            fives: Double(scoreCount["5"] ?? 0),
+            four: Double(scoreCount["4"] ?? 0),
+            three: Double(scoreCount["3"] ?? 0),
+            two: Double(scoreCount["2"] ?? 0),
+            one: Double(scoreCount["1"] ?? 0)
         )
-        
-        // 验证总百分比是否接近100%
-        let totalPercentage = stats.tens + stats.nines + stats.eights + stats.sevens + 
-                             stats.sixs + stats.fives + stats.four + stats.three + 
-                             stats.two + stats.one
-        print("总百分比: \(totalPercentage)%")
-        
-        return stats
+    }
+
+    private static func makeAggregateAccuracySummary(records: [ArcheryRecord], groupRecords: [ArcheryGroupRecord]) -> AggregateAccuracySummary {
+        let allScores = records.flatMap(\.scores) + groupRecords.flatMap { $0.groupScores.flatMap { $0 } }
+        let numericScores = allScores.map(scoreToInt)
+
+        guard !numericScores.isEmpty else {
+            return AggregateAccuracySummary(
+                averageScore: 0,
+                tenRingRate: 0,
+                spreadRadius: 0,
+                groupTightness: L10n.Analysis.noData,
+                accuracyGrade: L10n.Analysis.noData,
+                xRingCount: 0,
+                tenRingCount: 0,
+                nineRingCount: 0
+            )
+        }
+
+        let averageScore = Double(numericScores.reduce(0, +)) / Double(numericScores.count)
+        let variance = numericScores
+            .map { pow(Double($0) - averageScore, 2) }
+            .reduce(0, +) / Double(numericScores.count)
+        let spreadRadius = sqrt(variance)
+
+        let groupTightness = accuracyTightness(for: spreadRadius)
+        let accuracyGrade = accuracyGrade(for: averageScore)
+
+        let xRingCount = allScores.filter { $0 == "X" }.count
+        let tenRingCount = allScores.filter { $0 == "10" }.count
+        let nineRingCount = allScores.filter { $0 == "9" }.count
+        let tenRingHits = allScores.filter { $0 == "10" || $0 == "X" }.count
+        let tenRingRate = allScores.isEmpty ? 0 : Double(tenRingHits) / Double(allScores.count) * 100
+
+        return AggregateAccuracySummary(
+            averageScore: averageScore,
+            tenRingRate: tenRingRate,
+            spreadRadius: spreadRadius,
+            groupTightness: groupTightness,
+            accuracyGrade: accuracyGrade,
+            xRingCount: xRingCount,
+            tenRingCount: tenRingCount,
+            nineRingCount: nineRingCount
+        )
     }
     
     static func calculateComprehensiveStats(records: [ArcheryRecord], groupRecords: [ArcheryGroupRecord], timeRange: Int) -> ComprehensiveStats {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        let filteredRecords = records.filter { record in
-            switch timeRange {
-            case 0: return calendar.isDateInToday(record.date)
-            case 1: return calendar.isDate(record.date, equalTo: now, toGranularity: .weekOfYear)
-            case 2: return calendar.isDate(record.date, equalTo: now, toGranularity: .month)
-            case 3: return calendar.isDate(record.date, equalTo: now, toGranularity: .year)
-            default: return false
-            }
-        }
-        
-        let filteredGroupRecords = groupRecords.filter { record in
-            switch timeRange {
-            case 0: return calendar.isDateInToday(record.date)
-            case 1: return calendar.isDate(record.date, equalTo: now, toGranularity: .weekOfYear)
-            case 2: return calendar.isDate(record.date, equalTo: now, toGranularity: .month)
-            case 3: return calendar.isDate(record.date, equalTo: now, toGranularity: .year)
-            default: return false
-            }
-        }
+        let filteredData = filterRecords(records: records, groupRecords: groupRecords, timeRange: timeRange)
+        let filteredRecords = filteredData.records
+        let filteredGroupRecords = filteredData.groupRecords
         
         // 1. 计算平均分
         var totalScore = 0
@@ -320,22 +438,14 @@ class ScoreAnalytics {
         
         // 处理单组记录
         for record in filteredRecords {
-            let scores = record.scores.compactMap { score -> Int? in
-                if score == "X" { return 10 }
-                if score == "M" { return 0 }
-                return Int(score)
-            }
+            let scores = record.scores.map(scoreToInt)
             totalScore += scores.reduce(0, +)
             totalShots += scores.count
         }
         
         // 处理多组记录
         for record in filteredGroupRecords {
-            let scores = record.groupScores.flatMap { $0 }.compactMap { score -> Int? in
-                if score == "X" { return 10 }
-                if score == "M" { return 0 }
-                return Int(score)
-            }
+            let scores = record.groupScores.flatMap { $0 }.map(scoreToInt)
             totalScore += scores.reduce(0, +)
             totalShots += scores.count
         }
@@ -354,18 +464,14 @@ class ScoreAnalytics {
         }
         
         // 3. 计算命中率
-        let accuracyStats = calculateAccuracyStats(records: filteredRecords, groupRecords: filteredGroupRecords, timeRange: timeRange)
-        let accuracyRate = (accuracyStats.tens + accuracyStats.nines + accuracyStats.eights) / 100
+        let accuracyStats = calculateAccuracyStats(records: filteredRecords, groupRecords: filteredGroupRecords)
+        let accuracyRate = accuracyStats.topThreeRate
         
         // 4. 计算一致性（连续得分的能力）
         var consistencyRate = 0.0
-        if totalShots > 0 {
+        if totalShots > 1 {
             let allScores = (filteredRecords.flatMap { $0.scores } + filteredGroupRecords.flatMap { $0.groupScores.flatMap { $0 } })
-                .compactMap { score -> Int? in
-                    if score == "X" { return 10 }
-                    if score == "M" { return 0 }
-                    return Int(score)
-                }
+                .map(scoreToInt)
             
             var consecutiveCount = 0
             for i in 1..<allScores.count {
@@ -377,9 +483,9 @@ class ScoreAnalytics {
         }
         
         // 5. 计算最近趋势
-        let scoreData = processScores(records: filteredRecords, groupRecords: filteredGroupRecords, timeRange: timeRange)
+        let scoreData = processScores(records: filteredRecords, groupRecords: filteredGroupRecords, timeRange: 4)
         let recentTrend: Double
-        if scoreData.count >= 2 {
+        if scoreData.count >= 2, scoreData[scoreData.count - 2].score != 0 {
             let lastScore = scoreData.last?.score ?? 0
             let previousScore = scoreData[scoreData.count - 2].score
             recentTrend = ((lastScore - previousScore) / previousScore) * 100
@@ -468,25 +574,8 @@ class ScoreAnalytics {
         }
         let spreadRadius = sqrt(variance)
         
-        let groupTightness: String
-        if spreadRadius < 1.0 {
-            groupTightness = "紧密"
-        } else if spreadRadius < 2.0 {
-            groupTightness = "良好"
-        } else {
-            groupTightness = "松散"
-        }
-        
-        let accuracyGrade: String
-        if averageScore >= 9.0 {
-            accuracyGrade = "优秀"
-        } else if averageScore >= 8.0 {
-            accuracyGrade = "良好"
-        } else if averageScore >= 7.0 {
-            accuracyGrade = "一般"
-        } else {
-            accuracyGrade = "需改进"
-        }
+        let groupTightness = accuracyTightness(for: spreadRadius)
+        let accuracyGrade = accuracyGrade(for: averageScore)
         
         return (spreadRadius: spreadRadius, groupTightness: groupTightness, accuracyGrade: accuracyGrade)
     }
@@ -585,37 +674,12 @@ class ScoreAnalytics {
     static func calculateGroupRecordAccuracyStats(_ record: ArcheryGroupRecord) -> (spreadRadius: Double, groupTightness: String, accuracyGrade: String) {
         let allScores = record.groupScores.flatMap { $0 }.compactMap { scoreToInt($0) }
         let averageScore = allScores.isEmpty ? 0.0 : Double(allScores.reduce(0, +)) / Double(allScores.count)
-        
-        // 简化的散布半径计算
-        let variance: Double
-        if allScores.isEmpty {
-            variance = 0.0
-        } else {
-            let squaredDifferences = allScores.map { pow(Double($0) - averageScore, 2) }
-            variance = squaredDifferences.reduce(0, +) / Double(allScores.count)
-        }
-        let spreadRadius = sqrt(variance)
-        
-        let groupTightness: String
-        if spreadRadius < 1.0 {
-            groupTightness = "紧密"
-        } else if spreadRadius < 2.0 {
-            groupTightness = "良好"
-        } else {
-            groupTightness = "松散"
-        }
-        
-        let accuracyGrade: String
-        if averageScore >= 9.0 {
-            accuracyGrade = "优秀"
-        } else if averageScore >= 8.0 {
-            accuracyGrade = "良好"
-        } else if averageScore >= 7.0 {
-            accuracyGrade = "一般"
-        } else {
-            accuracyGrade = "需改进"
-        }
-        
+
+        let impactSummary = calculateGroupRecordImpactAnalysis(record)
+        let spreadRadius = impactSummary.groupingRadius95
+        let groupTightness = detailedGroupTightness(for: spreadRadius)
+        let accuracyGrade = detailedAccuracyGrade(for: averageScore)
+
         return (spreadRadius: spreadRadius, groupTightness: groupTightness, accuracyGrade: accuracyGrade)
     }
     
@@ -654,87 +718,302 @@ class ScoreAnalytics {
         let goldRings = allScores.filter { goldRingValues.contains($0) }
         return allScores.isEmpty ? 0 : Double(goldRings.count) / Double(allScores.count) * 100
     }
+
+    static func calculateTrendSummary(records: [ArcheryRecord], groupRecords: [ArcheryGroupRecord], timeRange: Int) -> ScoreTrendSummary {
+        let points = processScores(records: records, groupRecords: groupRecords, timeRange: timeRange)
+        let scores = points.map(\.score)
+
+        guard !scores.isEmpty else {
+            return ScoreTrendSummary(
+                points: [],
+                rollingAveragePoints: [],
+                overallAverage: 0,
+                latestAverage: 0,
+                recentAverage: 0,
+                baselineAverage: 0,
+                recentChangePercent: 0,
+                bestAverage: 0,
+                sessionCount: 0,
+                recentWindowCount: 0,
+                baselineWindowCount: 0,
+                momentum: .stable,
+                insight: TrendInsight(
+                    title: L10n.Analysis.trendAnalysis,
+                    message: L10n.tr("analysis_trend_insight_insufficient", 0)
+                )
+            )
+        }
+
+        let overallAverage = scores.reduce(0, +) / Double(scores.count)
+        let latestAverage = points.last?.score ?? overallAverage
+        let bestAverage = scores.max() ?? overallAverage
+
+        let recentWindow = Array(scores.suffix(min(3, scores.count)))
+        let recentAverage = recentWindow.reduce(0, +) / Double(recentWindow.count)
+        let recentWindowCount = recentWindow.count
+
+        let baselineSource: [Double]
+        if scores.count > recentWindow.count {
+            baselineSource = Array(scores.dropLast(recentWindow.count).suffix(min(3, scores.count - recentWindow.count)))
+        } else if scores.count >= 2 {
+            baselineSource = Array(scores.prefix(scores.count - 1))
+        } else {
+            baselineSource = []
+        }
+
+        let baselineAverage = baselineSource.isEmpty
+            ? recentAverage
+            : baselineSource.reduce(0, +) / Double(baselineSource.count)
+        let baselineWindowCount = baselineSource.count
+
+        let recentChangePercent: Double
+        if baselineAverage > 0 {
+            recentChangePercent = (recentAverage - baselineAverage) / baselineAverage * 100
+        } else {
+            recentChangePercent = 0
+        }
+
+        let momentum: TrendMomentum
+        if recentChangePercent >= 1.5 {
+            momentum = .rising
+        } else if recentChangePercent <= -1.5 {
+            momentum = .falling
+        } else {
+            momentum = .stable
+        }
+
+        let rollingAveragePoints = points.indices.map { index in
+            let startIndex = max(0, index - 2)
+            let window = Array(points[startIndex...index])
+            let average = window.map(\.score).reduce(0, +) / Double(window.count)
+            return ScoreData(date: points[index].date, score: average)
+        }
+
+        let insight = generateTrendInsight(
+            sessionCount: points.count,
+            recentWindowCount: recentWindowCount,
+            baselineWindowCount: baselineWindowCount,
+            recentChangePercent: recentChangePercent,
+            momentum: momentum
+        )
+
+        return ScoreTrendSummary(
+            points: points,
+            rollingAveragePoints: rollingAveragePoints,
+            overallAverage: overallAverage,
+            latestAverage: latestAverage,
+            recentAverage: recentAverage,
+            baselineAverage: baselineAverage,
+            recentChangePercent: recentChangePercent,
+            bestAverage: bestAverage,
+            sessionCount: points.count,
+            recentWindowCount: recentWindowCount,
+            baselineWindowCount: baselineWindowCount,
+            momentum: momentum,
+            insight: insight
+        )
+    }
+
+    static func calculateImpactAnalysis(records: [ArcheryRecord], groupRecords: [ArcheryGroupRecord], timeRange: Int) -> ImpactAnalysisSummary {
+        let filteredData = filterRecords(records: records, groupRecords: groupRecords, timeRange: timeRange)
+        let groupRecordsWithHits = filteredData.groupRecords.compactMap { record -> (String, [ArrowHit])? in
+            guard let groupArrowHits = record.groupArrowHits else { return nil }
+            let hits = groupArrowHits.flatMap { $0 }
+            guard !hits.isEmpty else { return nil }
+            return (record.targetType, hits)
+        }
+
+        guard !groupRecordsWithHits.isEmpty else {
+            return emptyImpactAnalysisSummary()
+        }
+
+        let groupedHits = Dictionary(grouping: groupRecordsWithHits, by: \.0)
+        let dominantTargetEntry = groupedHits.max { lhs, rhs in
+            lhs.value.flatMap(\.1).count < rhs.value.flatMap(\.1).count
+        }
+
+        guard let dominantTargetEntry else {
+            return emptyImpactAnalysisSummary()
+        }
+
+        let targetTypeName = dominantTargetEntry.key
+        let hits = dominantTargetEntry.value.flatMap(\.1)
+        let uniqueTargetTypes = Set(groupRecordsWithHits.map(\.0))
+        let scopeDescription: String?
+        if uniqueTargetTypes.count > 1 {
+            scopeDescription = L10n.tr("analysis_impact_scope", targetTypeName)
+        } else {
+            scopeDescription = nil
+        }
+
+        return buildImpactAnalysisSummary(
+            targetTypeName: targetTypeName,
+            hits: hits,
+            scopeDescription: scopeDescription,
+            hasRealData: true
+        )
+    }
+
+    static func calculateGroupRecordImpactAnalysis(_ record: ArcheryGroupRecord) -> ImpactAnalysisSummary {
+        if let groupArrowHits = record.groupArrowHits {
+            let realHits = groupArrowHits.flatMap { $0 }
+            if !realHits.isEmpty {
+                return buildImpactAnalysisSummary(
+                    targetTypeName: record.targetType,
+                    hits: realHits,
+                    scopeDescription: nil,
+                    hasRealData: true
+                )
+            }
+        }
+
+        let simulatedHits = simulatedHits(for: record)
+        guard !simulatedHits.isEmpty else {
+            return emptyImpactAnalysisSummary(targetTypeName: record.targetType)
+        }
+
+        return buildImpactAnalysisSummary(
+            targetTypeName: record.targetType,
+            hits: simulatedHits,
+            scopeDescription: nil,
+            hasRealData: false
+        )
+    }
+
+    static func calculateGroupRecordCenterOffset(_ record: ArcheryGroupRecord) -> Double {
+        calculateGroupRecordImpactAnalysis(record).centerOffset
+    }
+
+    static func calculateGroupRecordPrimaryBias(_ record: ArcheryGroupRecord) -> ImpactDirection {
+        calculateGroupRecordImpactAnalysis(record).biasDirection
+    }
+
+    static func calculateGroupRecordOffsetDistribution(_ record: ArcheryGroupRecord) -> [ImpactQuadrantSummary] {
+        calculateGroupRecordImpactAnalysis(record).quadrants
+    }
+
+    static func generateGroupRecordArrowPoints(_ record: ArcheryGroupRecord, scaleFactor: Double = 2.0) -> [AnalysisArrowPoint] {
+        generateArrowPoints(from: calculateGroupRecordImpactAnalysis(record), scaleFactor: scaleFactor)
+    }
+
+    static func generateArrowPoints(from summary: ImpactAnalysisSummary, scaleFactor: Double = 2.0) -> [AnalysisArrowPoint] {
+        summary.points.map { point in
+            AnalysisArrowPoint(
+                id: point.id,
+                offset: CGSize(
+                    width: point.position.x * scaleFactor,
+                    height: point.position.y * scaleFactor
+                ),
+                color: ringColor(for: point.score)
+            )
+        }
+    }
     
     // MARK: - Analysis Text Generation
     
     static func generateShootingAnalysis(analytics: ArcheryAnalytics) -> String {
-        var analysis = ""
+        var analysisParts: [String] = []
         
         if analytics.tenRingRate >= 70 {
-            analysis += "您的10环率表现优秀，保持当前的瞄准技术。"
+            analysisParts.append(L10n.tr("analysis_shooting_ten_rate_excellent"))
         } else if analytics.tenRingRate >= 50 {
-            analysis += "您的10环率良好，可以通过加强瞄准练习进一步提升。"
+            analysisParts.append(L10n.tr("analysis_shooting_ten_rate_good"))
         } else {
-            analysis += "建议加强基础瞄准训练，提高10环命中率。"
+            analysisParts.append(L10n.tr("analysis_shooting_ten_rate_improve"))
         }
         
         if analytics.averageRing >= 9.0 {
-            analysis += "平均环数很高，技术水平优秀。"
+            analysisParts.append(L10n.tr("analysis_shooting_average_excellent"))
         } else if analytics.averageRing >= 8.0 {
-            analysis += "平均环数良好，继续保持。"
+            analysisParts.append(L10n.tr("analysis_shooting_average_good"))
         } else {
-            analysis += "建议加强基础训练，提高整体水平。"
+            analysisParts.append(L10n.tr("analysis_shooting_average_improve"))
         }
         
-        return analysis
+        return analysisParts.joined(separator: " ")
     }
     
     static func generateAccuracyAnalysis(stats: (spreadRadius: Double, groupTightness: String, accuracyGrade: String)) -> String {
-        return "您的精准度等级为\(stats.accuracyGrade)，组别紧密度\(stats.groupTightness)。散布半径为\(String(format: "%.1f", stats.spreadRadius))，建议通过稳定射击姿势和呼吸控制来提高精准度。"
+        return L10n.tr(
+            "analysis_accuracy_advice",
+            stats.accuracyGrade,
+            stats.groupTightness,
+            String(format: "%.1f", stats.spreadRadius)
+        )
     }
     
     static func generateStabilityAnalysis(analytics: ArcheryAnalytics, stabilityData: (groupScores: [Double], upperLimit: Double, lowerLimit: Double, coefficientOfVariation: Double)) -> String {
         let level = getStabilityLevel(analytics.stabilityScore)
-        return "您的稳定性等级为\(level)，变异系数为\(String(format: "%.2f", stabilityData.coefficientOfVariation))。建议通过规律训练和技术动作标准化来提高稳定性。"
+        return L10n.tr(
+            "analysis_stability_advice",
+            level,
+            String(format: "%.2f", stabilityData.coefficientOfVariation)
+        )
     }
     
     static func generateStabilityAnalysisForGroup(score: Double, cv: Double) -> String {
-        let _ = getStabilityLevel(score)
         if score >= 80 {
-            return "您的稳定性表现优秀，变异系数为\(String(format: "%.2f", cv))%。继续保持当前的训练节奏和技术动作。"
+            return L10n.tr("analysis_stability_group_excellent", String(format: "%.2f", cv))
         } else if score >= 60 {
-            return "您的稳定性良好，变异系数为\(String(format: "%.2f", cv))%。建议通过规律训练进一步提升稳定性。"
+            return L10n.tr("analysis_stability_group_good", String(format: "%.2f", cv))
         } else {
-            return "您的稳定性需要改进，变异系数为\(String(format: "%.2f", cv))%。建议加强基础动作练习，提高技术一致性。"
+            return L10n.tr("analysis_stability_group_improve", String(format: "%.2f", cv))
         }
     }
     
     static func generateStabilityTrainingAdvice(score: Double, cv: Double) -> String {
         if score >= 80 {
-            return "保持当前的训练强度和技术动作，可以适当增加训练难度。"
+            return L10n.tr("analysis_stability_training_excellent")
         } else if score >= 60 {
-            return "建议增加技术动作的重复练习，注重动作的一致性和规范性。"
+            return L10n.tr("analysis_stability_training_good")
         } else if score >= 40 {
-            return "需要加强基础训练，重点练习站姿、瞄准和撒放的标准化动作。"
+            return L10n.tr("analysis_stability_training_average")
         } else {
-            return "建议从基础动作开始，逐步建立正确的射箭技术体系，可考虑寻求专业指导。"
+            return L10n.tr("analysis_stability_training_improve")
         }
     }
     
     static func generateFatigueAnalysis(index: Double) -> String {
         if index < 10 {
-            return "您的疲劳控制很好，射箭过程中保持了良好的体能状态。"
+            return L10n.tr("analysis_fatigue_excellent")
         } else if index < 20 {
-            return "存在轻微的疲劳迹象，建议适当调整训练强度。"
+            return L10n.tr("analysis_fatigue_good")
         } else if index < 30 {
-            return "疲劳程度较为明显，建议加强体能训练和休息调节。"
+            return L10n.tr("analysis_fatigue_average")
         } else {
-            return "疲劳程度较高，建议充分休息后再进行训练。"
+            return L10n.tr("analysis_fatigue_improve")
         }
     }
     
     static func generateFatigueTrainingAdvice(index: Double) -> String {
         if index < 10 {
-            return "您的疲劳控制很好，保持当前的训练强度和休息节奏。"
+            return L10n.tr("analysis_fatigue_training_excellent")
         } else if index < 20 {
-            return "轻微疲劳迹象，建议适当调整训练强度，增加休息时间。"
+            return L10n.tr("analysis_fatigue_training_good")
         } else if index < 30 {
-            return "存在明显疲劳，建议降低训练强度，加强体能训练。"
+            return L10n.tr("analysis_fatigue_training_average")
         } else {
-            return "疲劳程度较高，建议充分休息后再进行训练，并检查训练计划。"
+            return L10n.tr("analysis_fatigue_training_improve")
         }
     }
-    
+
+    static func ringColor(for score: Int) -> Color {
+        switch score {
+        case 10:
+            return .red
+        case 9:
+            return .orange
+        case 8:
+            return .yellow
+        case 7:
+            return .green
+        case 6:
+            return .blue
+        default:
+            return .gray
+        }
+    }
+
     // MARK: - Helper Functions
     
     private static func scoreToInt(_ score: String) -> Int {
@@ -781,13 +1060,13 @@ class ScoreAnalytics {
     
     static func getFatigueLevel(_ index: Double) -> String {
         if index < 10 {
-            return "优秀"
+            return gradeLabel(.excellent)
         } else if index < 20 {
-            return "良好"
+            return gradeLabel(.good)
         } else if index < 30 {
-            return "一般"
+            return gradeLabel(.average)
         } else {
-            return "需改进"
+            return gradeLabel(.needsImprovement)
         }
     }
     
@@ -805,13 +1084,13 @@ class ScoreAnalytics {
     
     static func getStabilityLevel(_ score: Double) -> String {
         if score >= 80 {
-            return "优秀"
+            return gradeLabel(.excellent)
         } else if score >= 60 {
-            return "良好"
+            return gradeLabel(.good)
         } else if score >= 40 {
-            return "一般"
+            return gradeLabel(.average)
         } else {
-            return "需改进"
+            return gradeLabel(.needsImprovement)
         }
     }
     
@@ -829,13 +1108,13 @@ class ScoreAnalytics {
     
     static func getCVLevel(_ cv: Double) -> String {
         if cv < 5 {
-            return "优秀"
+            return gradeLabel(.excellent)
         } else if cv < 10 {
-            return "良好"
+            return gradeLabel(.good)
         } else if cv < 15 {
-            return "一般"
+            return gradeLabel(.average)
         } else {
-            return "需改进"
+            return gradeLabel(.needsImprovement)
         }
     }
     
@@ -867,6 +1146,330 @@ class ScoreAnalytics {
             return .purple
         default:
             return .gray
+        }
+    }
+
+    private static func emptyImpactAnalysisSummary(targetTypeName: String? = nil) -> ImpactAnalysisSummary {
+        ImpactAnalysisSummary(
+            targetFace: targetTypeName.flatMap { TargetFaceManager.shared.getTarget(for: $0) },
+            targetTypeName: targetTypeName,
+            scopeDescription: nil,
+            totalHits: 0,
+            groupingRadius95: 0,
+            centerOffset: 0,
+            averageDistanceFromCenter: 0,
+            centroid: .zero,
+            hasRealData: false,
+            biasDirection: .centered,
+            dominantQuadrantRate: 0,
+            points: [],
+            quadrants: [],
+            insights: []
+        )
+    }
+
+    private static func buildImpactAnalysisSummary(targetTypeName: String, hits: [ArrowHit], scopeDescription: String?, hasRealData: Bool) -> ImpactAnalysisSummary {
+        guard !hits.isEmpty else { return emptyImpactAnalysisSummary(targetTypeName: targetTypeName) }
+
+        let targetFace = TargetFaceManager.shared.getTarget(for: targetTypeName)
+        let centroid = averagePoint(for: hits.map(\.position))
+        let groupingDistances = hits.map {
+            Double(hypot($0.position.x - centroid.x, $0.position.y - centroid.y))
+        }
+        let centerDistances = hits.map { $0.distanceFromCenter() }
+        let groupingRadius95 = percentile(groupingDistances, at: 0.95)
+        let centerOffset = Double(hypot(centroid.x, centroid.y))
+        let averageDistanceFromCenter = centerDistances.isEmpty ? 0 : centerDistances.reduce(0, +) / Double(centerDistances.count)
+
+        let points = hits.map {
+            ImpactPoint(
+                id: $0.id,
+                position: $0.position,
+                score: $0.score,
+                ringNumber: $0.ringNumber
+            )
+        }
+
+        let quadrants = makeQuadrantSummaries(from: hits)
+        let dominantQuadrantRate = quadrants.map(\.percentage).max() ?? 0
+        let biasDirection = classifyDirection(for: centroid)
+
+        let draftSummary = ImpactAnalysisSummary(
+            targetFace: targetFace,
+            targetTypeName: targetTypeName,
+            scopeDescription: scopeDescription,
+            totalHits: hits.count,
+            groupingRadius95: groupingRadius95,
+            centerOffset: centerOffset,
+            averageDistanceFromCenter: averageDistanceFromCenter,
+            centroid: centroid,
+            hasRealData: hasRealData,
+            biasDirection: biasDirection,
+            dominantQuadrantRate: dominantQuadrantRate,
+            points: points,
+            quadrants: quadrants,
+            insights: []
+        )
+
+        return ImpactAnalysisSummary(
+            targetFace: draftSummary.targetFace,
+            targetTypeName: draftSummary.targetTypeName,
+            scopeDescription: draftSummary.scopeDescription,
+            totalHits: draftSummary.totalHits,
+            groupingRadius95: draftSummary.groupingRadius95,
+            centerOffset: draftSummary.centerOffset,
+            averageDistanceFromCenter: draftSummary.averageDistanceFromCenter,
+            centroid: draftSummary.centroid,
+            hasRealData: draftSummary.hasRealData,
+            biasDirection: draftSummary.biasDirection,
+            dominantQuadrantRate: draftSummary.dominantQuadrantRate,
+            points: draftSummary.points,
+            quadrants: draftSummary.quadrants,
+            insights: generateImpactInsights(summary: draftSummary)
+        )
+    }
+
+    private static func simulatedHits(for record: ArcheryGroupRecord) -> [ArrowHit] {
+        let allScores = record.groupScores.flatMap { $0 }
+        guard !allScores.isEmpty else { return [] }
+
+        let targetFace = TargetFaceManager.shared.getTarget(for: record.targetType)
+        let targetRadius = (targetFace?.diameter ?? 40.0) / 2
+        let maxDistance = targetRadius * 0.72
+
+        return allScores.enumerated().map { index, score in
+            let numericScore = scoreToInt(score)
+            let distanceFactor = max(0.08, Double(10 - numericScore) / 10.0)
+            let angleDegrees = (index * 67 + numericScore * 17) % 360
+            let angle = Double(angleDegrees) * .pi / 180
+            let modulation = 0.72 + Double((index % 5)) * 0.07
+            let distance = maxDistance * distanceFactor * modulation
+            let position = CGPoint(
+                x: CGFloat(cos(angle) * distance),
+                y: CGFloat(sin(angle) * distance)
+            )
+
+            return ArrowHit(
+                position: position,
+                score: numericScore,
+                ringNumber: numericScore == 10 && score.uppercased() == "X" ? 11 : numericScore,
+                groupIndex: index / max(record.arrowsPerGroup, 1),
+                arrowIndex: index % max(record.arrowsPerGroup, 1),
+                targetFaceType: targetFace?.type ?? .full40cm
+            )
+        }
+    }
+
+    private static func makeQuadrantSummaries(from hits: [ArrowHit]) -> [ImpactQuadrantSummary] {
+        guard !hits.isEmpty else { return [] }
+
+        var upperLeft = 0
+        var upperRight = 0
+        var lowerLeft = 0
+        var lowerRight = 0
+
+        for hit in hits {
+            if hit.position.x <= 0 && hit.position.y <= 0 {
+                upperLeft += 1
+            } else if hit.position.x > 0 && hit.position.y <= 0 {
+                upperRight += 1
+            } else if hit.position.x <= 0 && hit.position.y > 0 {
+                lowerLeft += 1
+            } else {
+                lowerRight += 1
+            }
+        }
+
+        let total = Double(hits.count)
+
+        return [
+            ImpactQuadrantSummary(direction: .upperLeft, count: upperLeft, percentage: Double(upperLeft) / total * 100),
+            ImpactQuadrantSummary(direction: .upperRight, count: upperRight, percentage: Double(upperRight) / total * 100),
+            ImpactQuadrantSummary(direction: .lowerLeft, count: lowerLeft, percentage: Double(lowerLeft) / total * 100),
+            ImpactQuadrantSummary(direction: .lowerRight, count: lowerRight, percentage: Double(lowerRight) / total * 100)
+        ]
+    }
+
+    private static func classifyDirection(for point: CGPoint) -> ImpactDirection {
+        let offset = Double(hypot(point.x, point.y))
+        guard offset >= 0.8 else { return .centered }
+
+        if point.x <= 0 && point.y <= 0 {
+            return .upperLeft
+        } else if point.x > 0 && point.y <= 0 {
+            return .upperRight
+        } else if point.x <= 0 && point.y > 0 {
+            return .lowerLeft
+        } else {
+            return .lowerRight
+        }
+    }
+
+    private static func detailedGroupTightness(for spreadRadius: Double) -> String {
+        switch spreadRadius {
+        case ..<3.0:
+            return L10n.tr("analysis_grade_excellent")
+        case ..<5.0:
+            return L10n.tr("analysis_grade_good")
+        case ..<8.0:
+            return L10n.tr("analysis_grade_average")
+        default:
+            return L10n.tr("analysis_grade_improve")
+        }
+    }
+
+    private static func detailedAccuracyGrade(for averageScore: Double) -> String {
+        switch averageScore {
+        case 9.5...:
+            return "A+"
+        case 9.0...:
+            return "A"
+        case 8.5...:
+            return "B+"
+        case 8.0...:
+            return "B"
+        default:
+            return "C"
+        }
+    }
+
+    private static func averagePoint(for points: [CGPoint]) -> CGPoint {
+        guard !points.isEmpty else { return .zero }
+
+        let totalX = points.map(\.x).reduce(CGFloat.zero, +)
+        let totalY = points.map(\.y).reduce(CGFloat.zero, +)
+
+        return CGPoint(
+            x: totalX / CGFloat(points.count),
+            y: totalY / CGFloat(points.count)
+        )
+    }
+
+    private static func percentile(_ values: [Double], at percentile: Double) -> Double {
+        guard !values.isEmpty else { return 0 }
+
+        let sortedValues = values.sorted()
+        let rawIndex = Int(Double(sortedValues.count - 1) * percentile)
+        let clampedIndex = min(max(rawIndex, 0), sortedValues.count - 1)
+        return sortedValues[clampedIndex]
+    }
+
+    private static func generateTrendInsight(
+        sessionCount: Int,
+        recentWindowCount: Int,
+        baselineWindowCount: Int,
+        recentChangePercent: Double,
+        momentum: TrendMomentum
+    ) -> TrendInsight {
+        guard sessionCount > 1, baselineWindowCount > 0 else {
+            return TrendInsight(
+                title: L10n.Analysis.trendAnalysis,
+                message: L10n.tr("analysis_trend_insight_insufficient", sessionCount)
+            )
+        }
+
+        let formattedDelta = String(format: "%.1f%%", abs(recentChangePercent))
+        let message: String
+
+        switch momentum {
+        case .rising:
+            message = L10n.tr(
+                "analysis_trend_insight_rising",
+                recentWindowCount,
+                baselineWindowCount,
+                formattedDelta
+            )
+        case .stable:
+            message = L10n.tr(
+                "analysis_trend_insight_stable",
+                recentWindowCount,
+                baselineWindowCount,
+                formattedDelta
+            )
+        case .falling:
+            message = L10n.tr(
+                "analysis_trend_insight_falling",
+                recentWindowCount,
+                baselineWindowCount,
+                formattedDelta
+            )
+        }
+
+        return TrendInsight(title: L10n.Analysis.trendAnalysis, message: message)
+    }
+
+    private static func generateImpactInsights(summary: ImpactAnalysisSummary) -> [ImpactInsight] {
+        let groupingMessage: String
+        if summary.groupingRadius95 <= 2.5 {
+            groupingMessage = L10n.tr("analysis_grouping_message_excellent")
+        } else if summary.groupingRadius95 <= 4.5 {
+            groupingMessage = L10n.tr("analysis_grouping_message_good")
+        } else {
+            groupingMessage = L10n.tr("analysis_grouping_message_improve")
+        }
+
+        let adjustmentMessage: String
+        if summary.biasDirection == .centered || summary.centerOffset <= 1.0 {
+            adjustmentMessage = L10n.tr("analysis_bias_message_centered")
+        } else {
+            adjustmentMessage = L10n.tr("analysis_bias_message_offset", summary.biasDirection.localizedLabel)
+        }
+
+        return [
+            ImpactInsight(
+                id: "grouping",
+                symbolName: "scope",
+                title: L10n.tr("analysis_insight_grouping_title"),
+                message: groupingMessage
+            ),
+            ImpactInsight(
+                id: "adjustment",
+                symbolName: summary.biasDirection.symbolName,
+                title: L10n.tr("analysis_insight_adjustment_title"),
+                message: adjustmentMessage
+            )
+        ]
+    }
+
+    private enum GradeCategory {
+        case excellent
+        case good
+        case average
+        case needsImprovement
+    }
+
+    private static func accuracyTightness(for spreadRadius: Double) -> String {
+        if spreadRadius < 1.0 {
+            return L10n.tr("analysis_group_tightness_tight")
+        } else if spreadRadius < 2.0 {
+            return L10n.tr("analysis_group_tightness_good")
+        } else {
+            return L10n.tr("analysis_group_tightness_loose")
+        }
+    }
+
+    private static func accuracyGrade(for averageScore: Double) -> String {
+        if averageScore >= 9.0 {
+            return gradeLabel(.excellent)
+        } else if averageScore >= 8.0 {
+            return gradeLabel(.good)
+        } else if averageScore >= 7.0 {
+            return gradeLabel(.average)
+        } else {
+            return gradeLabel(.needsImprovement)
+        }
+    }
+
+    private static func gradeLabel(_ grade: GradeCategory) -> String {
+        switch grade {
+        case .excellent:
+            return L10n.tr("analysis_grade_excellent")
+        case .good:
+            return L10n.tr("analysis_grade_good")
+        case .average:
+            return L10n.tr("analysis_grade_average")
+        case .needsImprovement:
+            return L10n.tr("analysis_grade_improve")
         }
     }
 }

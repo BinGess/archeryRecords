@@ -1,6 +1,6 @@
 import Foundation
 
-struct ArcheryRecord: Identifiable, Codable {
+struct ArcheryRecord: Identifiable, Codable, Hashable {
     let id: UUID
     let bowType: String
     let distance: String

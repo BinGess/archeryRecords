@@ -99,6 +99,7 @@ struct TrainingAdvice: Codable {
 
 // MARK: - 错误处理
 enum CozeError: Error {
+    case configurationMissing
     case requestFailed(statusCode: Int)
     case invalidResponse
     case invalidData
@@ -106,6 +107,8 @@ enum CozeError: Error {
     
     var localizedDescription: String {
         switch self {
+        case .configurationMissing:
+            return "缺少 Coze 配置，请在 CozeSecrets.plist 中填写访问凭证"
         case .requestFailed(let code):
             return "请求失败，错误码：\(code)"
         case .invalidResponse:
