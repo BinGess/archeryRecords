@@ -90,7 +90,12 @@ final class PurchaseManager: ObservableObject {
 
         do {
             let products = try await Product.products(for: [productIdentifier])
-            proProduct = products.first
+            if products.isEmpty {
+                purchaseErrorMessage = L10n.Pro.purchaseUnavailable
+            } else {
+                purchaseErrorMessage = nil
+                proProduct = products.first
+            }
         } catch {
             purchaseErrorMessage = error.localizedDescription
         }

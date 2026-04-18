@@ -1,0 +1,45 @@
+{
+  "identifier" : "BA35EBF5-2F1C-43AC-B07A-461CEE0027F4",
+  "nonConsumableIAP" : [
+    {
+      "displayPrice" : "18.00",
+      "familyShareable" : false,
+      "internalID" : "4A194929-2E3F-4CE1-BF22-21E6F40408BF",
+      "localizations" : [
+        {
+          "description" : "Lifetime access to all Pro features including iCloud sync, visual target input, and advanced analytics.",
+          "displayName" : "Pro Lifetime",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "终身访问所有专业功能，包括 iCloud 同步、可视化靶位输入和高级数据分析。",
+          "displayName" : "专业版终身授权",
+          "locale" : "zh_Hans"
+        }
+      ],
+      "productID" : "com.timmy.archeryrecord.pro.lifetime",
+      "referenceName" : "Pro Lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "0EF8CFBA-EE53-4E35-BD7B-C504E02FDE99",
+    "_storefront" : "CHN,156",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      }
+    ]
+  },
+  "version" : {
+    "major" : 2,
+    "minor" : 0
+  }
+}
