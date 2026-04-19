@@ -134,6 +134,7 @@ private struct ClayCardModifier: ViewModifier {
             .overlay {
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
                     .stroke(Color.white.opacity(borderOpacity), lineWidth: 1)
+                    .allowsHitTesting(false)
             }
             .overlay(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: radius - 2, style: .continuous)
@@ -147,6 +148,7 @@ private struct ClayCardModifier: ViewModifier {
                             endPoint: .bottomTrailing
                         )
                     )
+                    .allowsHitTesting(false)
             }
             .shadow(color: SharedStyles.Shadow.light, radius: 14, x: 0, y: 10)
             .shadow(color: SharedStyles.Shadow.highlight, radius: 10, x: -3, y: -3)
@@ -166,6 +168,7 @@ private struct BlockSurfaceModifier: ViewModifier {
             .overlay {
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
                     .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                    .allowsHitTesting(false)
             }
             .shadow(color: colors.last?.opacity(0.14) ?? SharedStyles.Shadow.medium, radius: 14, x: 0, y: 10)
     }

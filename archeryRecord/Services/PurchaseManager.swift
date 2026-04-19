@@ -1,6 +1,10 @@
-import Combine
 import Foundation
+import OSLog
 import StoreKit
+
+private enum ProPurchaseLogging {
+    static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "archeryRecord", category: "IAP")
+}
 
 enum ProFeature: String, Identifiable {
     case icloudSync
@@ -56,6 +60,8 @@ final class PurchaseManager: ObservableObject {
     private let userDefaults: UserDefaults
     private let proUnlockedKey = "archeryRecord.proLifetimeUnlocked"
     private var transactionUpdatesTask: Task<Void, Never>?
+    /// Coalesces concurrent `loadProductsIfNeeded` callers so purchase can await one shared request.
+    private var productsRequestTask: Task<Void, Never>?
 
     var productDisplayPrice: String {
         proProduct?.displayPrice ?? L10n.Pro.ctaPriceFallback
@@ -84,42 +90,43 @@ final class PurchaseManager: ObservableObject {
     }
 
     func loadProductsIfNeeded() async {
-        guard proProduct == nil, !isLoadingProduct else { return }
-
-        isLoadingProduct = true
-        defer { isLoadingProduct = false }
-
-        do {
-            let products = try await Product.products(for: [productIdentifier])
-            if products.isEmpty {
-                purchaseErrorMessage = L10n.Pro.purchaseUnavailable
-            } else {
-                purchaseErrorMessage = nil
-                proProduct = products.first
-            }
-        } catch {
-            purchaseErrorMessage = error.localizedDescription
+        if proProduct != nil { return }
+        if let productsRequestTask {
+            await productsRequestTask.value
+            return
         }
+
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.executeProductsRequest()
+        }
+        productsRequestTask = task
+        await task.value
     }
 
     func purchasePro() async -> Bool {
-        await loadProductsIfNeeded()
+        ProPurchaseLogging.log.debug("purchasePro started, id=\(self.productIdentifier, privacy: .public)")
 
-        // If a concurrent load is already in progress, wait for it to finish
-        if proProduct == nil && isLoadingProduct {
-            for await loading in $isLoadingProduct.values {
-                if !loading { break }
-            }
-        }
-
-        guard let proProduct else {
-            purchaseErrorMessage = L10n.Pro.purchaseUnavailable
+        guard !isPurchasing else {
+            ProPurchaseLogging.log.debug("purchasePro skipped: already in progress")
             return false
         }
 
         isPurchasing = true
-        purchaseErrorMessage = nil
         defer { isPurchasing = false }
+
+        await loadProductsIfNeeded()
+
+        guard let proProduct else {
+            ProPurchaseLogging.log.error("purchasePro aborted: no Product loaded")
+            if purchaseErrorMessage == nil {
+                purchaseErrorMessage = L10n.Pro.purchaseUnavailable
+            }
+            return false
+        }
+
+        purchaseErrorMessage = nil
+        ProPurchaseLogging.log.debug("purchasePro calling StoreKit purchase()")
 
         do {
             let result = try await proProduct.purchase()
@@ -129,19 +136,47 @@ final class PurchaseManager: ObservableObject {
                 let transaction = try checkVerified(verification)
                 await unlock(with: transaction)
                 await transaction.finish()
+                ProPurchaseLogging.log.debug("purchasePro success")
                 return true
             case .pending:
                 purchaseErrorMessage = L10n.Pro.purchasePending
+                ProPurchaseLogging.log.debug("purchasePro pending (e.g. Ask to Buy)")
                 return false
             case .userCancelled:
+                ProPurchaseLogging.log.debug("purchasePro user cancelled")
                 return false
             @unknown default:
                 purchaseErrorMessage = L10n.Pro.purchaseFailed
+                ProPurchaseLogging.log.error("purchasePro unknown result")
                 return false
             }
         } catch {
             purchaseErrorMessage = error.localizedDescription
+            ProPurchaseLogging.log.error("purchasePro error: \(error.localizedDescription, privacy: .public)")
             return false
+        }
+    }
+
+    private func executeProductsRequest() async {
+        isLoadingProduct = true
+        defer {
+            isLoadingProduct = false
+            productsRequestTask = nil
+        }
+
+        do {
+            let products = try await Product.products(for: [productIdentifier])
+            if products.isEmpty {
+                ProPurchaseLogging.log.error("Product.products returned empty for id=\(self.productIdentifier, privacy: .public)")
+                purchaseErrorMessage = L10n.Pro.purchaseUnavailable
+            } else {
+                purchaseErrorMessage = nil
+                proProduct = products.first
+                ProPurchaseLogging.log.debug("Loaded product count=\(products.count, privacy: .public)")
+            }
+        } catch {
+            ProPurchaseLogging.log.error("Product.products failed: \(error.localizedDescription, privacy: .public)")
+            purchaseErrorMessage = error.localizedDescription
         }
     }
 

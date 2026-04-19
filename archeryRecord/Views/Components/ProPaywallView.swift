@@ -143,7 +143,7 @@ struct ProPaywallView: View {
             }
 
             Button {
-                Task {
+                Task { @MainActor in
                     let success = await purchaseManager.purchasePro()
                     if success {
                         onPurchased?()
@@ -168,7 +168,8 @@ struct ProPaywallView: View {
                 .padding(.vertical, 16)
             }
             .buttonStyle(.plain)
-            .disabled(purchaseManager.isPurchasing || purchaseManager.isProUnlocked || purchaseManager.isLoadingProduct)
+            .disabled(purchaseManager.isPurchasing || purchaseManager.isProUnlocked)
+            .contentShape(Rectangle())
             .blockSurface(colors: SharedStyles.GradientSet.sunrise, radius: 18)
             .opacity((purchaseManager.isPurchasing || purchaseManager.isProUnlocked) ? 0.72 : 1)
 
