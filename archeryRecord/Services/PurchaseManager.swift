@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import StoreKit
 
@@ -103,6 +104,13 @@ final class PurchaseManager: ObservableObject {
 
     func purchasePro() async -> Bool {
         await loadProductsIfNeeded()
+
+        // If a concurrent load is already in progress, wait for it to finish
+        if proProduct == nil && isLoadingProduct {
+            for await loading in $isLoadingProduct.values {
+                if !loading { break }
+            }
+        }
 
         guard let proProduct else {
             purchaseErrorMessage = L10n.Pro.purchaseUnavailable

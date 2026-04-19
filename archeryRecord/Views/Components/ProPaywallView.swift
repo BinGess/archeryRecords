@@ -168,7 +168,7 @@ struct ProPaywallView: View {
                 .padding(.vertical, 16)
             }
             .buttonStyle(.plain)
-            .disabled(purchaseManager.isPurchasing || purchaseManager.isProUnlocked)
+            .disabled(purchaseManager.isPurchasing || purchaseManager.isProUnlocked || purchaseManager.isLoadingProduct)
             .blockSurface(colors: SharedStyles.GradientSet.sunrise, radius: 18)
             .opacity((purchaseManager.isPurchasing || purchaseManager.isProUnlocked) ? 0.72 : 1)
 
