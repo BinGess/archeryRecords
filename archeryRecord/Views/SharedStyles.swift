@@ -130,6 +130,7 @@ private struct ClayCardModifier: ViewModifier {
                             endPoint: .bottomTrailing
                         )
                     )
+                    .allowsHitTesting(false)
             )
             .overlay {
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
@@ -164,6 +165,7 @@ private struct BlockSurfaceModifier: ViewModifier {
             .background(
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
                     .fill(SharedStyles.blockGradient(colors))
+                    .allowsHitTesting(false)
             )
             .overlay {
                 RoundedRectangle(cornerRadius: radius, style: .continuous)

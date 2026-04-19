@@ -73,20 +73,34 @@ struct NewContentView: View {
                             showProPaywall = true
                         } label: {
                             VStack(spacing: 1) {
-                                Image(systemName: "crown.fill")
-                                    .font(.system(size: 17, weight: .black))
-                                    .foregroundStyle(SharedStyles.Accent.orange)
+                                if purchaseManager.isProUnlocked {
+                                    Image(systemName: "checkmark.seal.fill")
+                                        .font(.system(size: 17, weight: .bold))
+                                        .foregroundStyle(
+                                            LinearGradient(
+                                                colors: [SharedStyles.Accent.mint, SharedStyles.Accent.teal],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                } else {
+                                    Image(systemName: "crown.fill")
+                                        .font(.system(size: 17, weight: .black))
+                                        .foregroundStyle(SharedStyles.Accent.orange)
+                                }
 
-                                Text(L10n.Pro.badge)
+                                Text(purchaseManager.isProUnlocked ? L10n.Pro.cornerUnlockedLabel : L10n.Pro.badge)
                                     .font(.system(size: 9, weight: .black))
                                     .foregroundStyle(
                                         LinearGradient(
-                                            colors: [
-                                                Color(red: 0.99, green: 0.86, blue: 0.34),
-                                                Color(red: 0.88, green: 0.64, blue: 0.08)
-                                            ],
-                                            startPoint: .top,
-                                            endPoint: .bottom
+                                            colors: purchaseManager.isProUnlocked
+                                                ? [SharedStyles.Accent.teal, SharedStyles.Accent.mint]
+                                                : [
+                                                    Color(red: 0.99, green: 0.86, blue: 0.34),
+                                                    Color(red: 0.88, green: 0.64, blue: 0.08)
+                                                ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
                                         )
                                     )
                                     .tracking(0.3)
@@ -94,7 +108,10 @@ struct NewContentView: View {
                                     .minimumScaleFactor(0.9)
                             }
                             .frame(width: 46, height: 52)
-                            .clayCard(tint: SharedStyles.Accent.orange, radius: 18)
+                            .clayCard(
+                                tint: purchaseManager.isProUnlocked ? SharedStyles.Accent.mint : SharedStyles.Accent.orange,
+                                radius: 18
+                            )
                         }
                         .buttonStyle(.plain)
                         

@@ -105,10 +105,14 @@ final class PurchaseManager: ObservableObject {
     }
 
     func purchasePro() async -> Bool {
-        ProPurchaseLogging.log.debug("purchasePro started, id=\(self.productIdentifier, privacy: .public)")
+        // NSLog/print show up reliably in the Xcode debug console; Logger.debug is often filtered.
+        NSLog("ArcheryRecord IAP: purchasePro() entered, productID=%@", productIdentifier)
+        print("ArcheryRecord IAP: purchasePro() entered, productID=\(productIdentifier)")
+        ProPurchaseLogging.log.notice("purchasePro started, id=\(self.productIdentifier, privacy: .public)")
 
         guard !isPurchasing else {
-            ProPurchaseLogging.log.debug("purchasePro skipped: already in progress")
+            NSLog("ArcheryRecord IAP: purchasePro skipped (already purchasing)")
+            ProPurchaseLogging.log.notice("purchasePro skipped: already in progress")
             return false
         }
 

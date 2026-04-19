@@ -241,6 +241,14 @@
 "pro_entry_analytics_subtitle" = "查看更多命中率、稳定性与疲劳分析。";
 "pro_cta_price_fallback" = "一次性买断";
 "pro_already_unlocked" = "已解锁";
+"pro_member_status_title" = "你已是 Pro 会员";
+"pro_member_status_subtitle" = "感谢支持！当前 Apple ID 已永久解锁全部 Pro 功能，可尽情使用。";
+"pro_member_status_badge" = "终身权益 · 已生效";
+"pro_member_footer_hint" = "更换设备后，可点击「恢复购买」同步会员状态。";
+"pro_member_owned_banner" = "本机已激活 Pro 会员";
+"pro_member_benefits_section_title" = "会员权益一览";
+"pro_corner_unlocked_label" = "会员";
+"pro_member_benefit_included" = "已包含";
 "analysis_pro_title" = "更多专业分析等你查看";
 "analysis_pro_subtitle" = "当前免费版可查看综合分析，升级 Pro 后可继续查看命中率、稳定性和疲劳分析。";
 "analysis_pro_cta" = "购买 Pro 版本，查看更多专业分析";

@@ -240,6 +240,14 @@
 "pro_entry_analytics_subtitle" = "命中率、安定性、疲労分析を確認できます。";
 "pro_cta_price_fallback" = "永久解放";
 "pro_already_unlocked" = "解放済み";
+"pro_member_status_title" = "Archery Pro 会員です";
+"pro_member_status_subtitle" = "ご支援ありがとうございます。この Apple ID ですべての Pro 機能が永久に利用できます。";
+"pro_member_status_badge" = "買い切り · 有効";
+"pro_member_footer_hint" = "機種を変えた場合は「購入を復元」で会員状態を更新できます。";
+"pro_member_owned_banner" = "この端末で Pro が有効です";
+"pro_member_benefits_section_title" = "会員特典";
+"pro_corner_unlocked_label" = "Pro";
+"pro_member_benefit_included" = "対象";
 "analysis_pro_title" = "プロ分析は Pro で利用できます";
 "analysis_pro_subtitle" = "無料版では総合分析を表示します。Pro にアップグレードすると、命中率、安定性、疲労分析を確認できます。";
 "analysis_pro_cta" = "Pro を購入して専門分析を見る";

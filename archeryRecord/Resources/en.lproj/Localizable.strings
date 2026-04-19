@@ -240,6 +240,14 @@
 "pro_entry_analytics_subtitle" = "See accuracy, stability, and fatigue insights.";
 "pro_cta_price_fallback" = "Lifetime unlock";
 "pro_already_unlocked" = "Unlocked";
+"pro_member_status_title" = "You're an Archery Pro member";
+"pro_member_status_subtitle" = "Thanks for your support. Every Pro feature below is unlocked on this Apple ID — yours for life.";
+"pro_member_status_badge" = "Lifetime access · Active";
+"pro_member_footer_hint" = "Changed devices? Use Restore Purchases to refresh your membership.";
+"pro_member_owned_banner" = "Pro membership active on this device";
+"pro_member_benefits_section_title" = "Included with your membership";
+"pro_corner_unlocked_label" = "PRO";
+"pro_member_benefit_included" = "Included";
 "analysis_pro_title" = "Pro analysis is available";
 "analysis_pro_subtitle" = "The free version includes comprehensive analysis. Upgrade to Pro to view accuracy, stability, and fatigue insights.";
 "analysis_pro_cta" = "Unlock Pro to view advanced analysis";

@@ -248,6 +248,17 @@ struct Pro {
     static var entryAnalyticsSubtitle: String { tr("pro_entry_analytics_subtitle") }
     static var ctaPriceFallback: String { tr("pro_cta_price_fallback") }
     static var alreadyUnlocked: String { tr("pro_already_unlocked") }
+    /// Prominent copy when the user already has Pro (paywall hero).
+    static var memberStatusTitle: String { tr("pro_member_status_title") }
+    static var memberStatusSubtitle: String { tr("pro_member_status_subtitle") }
+    static var memberStatusBadge: String { tr("pro_member_status_badge") }
+    static var memberFooterHint: String { tr("pro_member_footer_hint") }
+    static var memberOwnedBanner: String { tr("pro_member_owned_banner") }
+    static var memberBenefitsSectionTitle: String { tr("pro_member_benefits_section_title") }
+    /// Short label on the home Pro chip when unlocked.
+    static var cornerUnlockedLabel: String { tr("pro_corner_unlocked_label") }
+    /// Small chip next to each benefit when the user already has Pro.
+    static var benefitIncludedChip: String { tr("pro_member_benefit_included") }
 }
 
 struct AnalysisUpgrade {
